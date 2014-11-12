@@ -7,6 +7,7 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"image"
 	"io"
@@ -25,6 +26,7 @@ import (
 
 type GoImages []image.Image
 type ImageList struct {
+	bytes.Buffer
 	GoImages
 	BuildDir, ImageDir, GenImgDir string
 	Out                           draw.Image
@@ -47,6 +49,7 @@ func funnyNames() string {
 	return names[mrand.Intn(len(names))]
 }
 
+// String generates CSS path to output file
 func (l ImageList) String() string {
 	files := ""
 	for _, file := range l.Files {
@@ -338,14 +341,14 @@ func (l *ImageList) Decode(rest ...string) error {
 
 // Combine all images in the slice into a final output
 // image.
-func (l *ImageList) Combine() {
+func (l *ImageList) Combine() error {
 
 	var (
 		maxW, maxH int
 	)
 
 	if l.Out != nil {
-		return
+		return errors.New("Sprite is empty")
 	}
 
 	maxW, maxH = l.Width(), l.Height()
@@ -368,6 +371,10 @@ func (l *ImageList) Combine() {
 		}
 	}
 	l.Combined = true
+
+	// Set the buf so bytes.Buffer works
+	err := png.Encode(&l.Buffer, goimg)
+	return err
 }
 
 func randString(n int) string {
@@ -413,6 +420,6 @@ func (l *ImageList) Export() (string, error) {
 		log.Printf("Failed to create: %s\n%s", abs, err)
 		return "", err
 	}
-	log.Print("Created file: ", abs)
+	// log.Print("Created file: ", abs)
 	return abs, nil
 }
