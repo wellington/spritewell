@@ -309,6 +309,14 @@ func (l *ImageList) Decode(rest ...string) error {
 		if err != nil {
 			panic(err)
 		}
+		if len(matches) == 0 {
+			// No matches found, try appending * and trying again
+			// This supports the case "139" > "139.jpg" "139.png" etc.
+			matches, err = filepath.Glob(filepath.Join(l.ImageDir, r+"*"))
+			if err != nil {
+				panic(err)
+			}
+		}
 		paths = append(paths, matches...)
 	}
 	l.Globs = paths
