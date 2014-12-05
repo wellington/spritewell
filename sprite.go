@@ -129,6 +129,8 @@ func (l ImageList) Y(pos int) int {
 	return y
 }
 
+// Map builds a sass-map with the information contained in ImageList.
+// This is deprecated.
 func (l ImageList) Map(name string) string {
 	var res []string
 	rel, _ := filepath.Rel(l.BuildDir, l.GenImgDir)
@@ -292,8 +294,8 @@ func (l *ImageList) OutputPath(globpath string) error {
 	return nil
 }
 
-// Accept a variable number of image globs appending
-// them to the ImageList.
+// Decode accepts a variable number of glob patterns.  The ImageDir
+// is assumed to be prefixed to the globs provided.
 func (l *ImageList) Decode(rest ...string) error {
 
 	// Invalidate the composite cache
@@ -333,10 +335,7 @@ func (l *ImageList) Decode(rest ...string) error {
 		)
 	}
 
-	// Combine images so that md5 hash of filename can be created
-	l.Combine()
-	// Send first glob as definition for output path
-	return l.OutputPath(rest[0])
+	return nil
 }
 
 // Combine all images in the slice into a final output

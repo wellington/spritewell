@@ -45,10 +45,11 @@ func TestSpriteLookup(t *testing.T) {
 
 func TestSpriteCombine(t *testing.T) {
 	imgs := ImageList{}
-	imgs.Decode("test/139.jpg", "test/140.jpg")
+	glob := []string{"test/139.jpg", "test/140.jpg"}
+	imgs.Decode(glob...)
 	imgs.Vertical = true
 	imgs.Combine()
-
+	imgs.OutputPath(glob[0])
 	if imgs.Height() != 279 {
 		t.Errorf("Invalid Height found %d, wanted %d", imgs.Height(), 279)
 	}
@@ -109,7 +110,8 @@ func TestSpriteCombine(t *testing.T) {
 // Test image dimension calls
 func TestSpriteImageDimensions(t *testing.T) {
 	imgs := ImageList{}
-	imgs.Decode("test/*.png")
+	glob := "test/*.png"
+	imgs.Decode(glob)
 
 	if e := "width: 96px;\nheight: 139px"; e != imgs.Dimensions("139") {
 		t.Errorf("Dimensions invalid was: %s\nexpected: %s\n",
@@ -130,7 +132,9 @@ func TestSpriteImageDimensions(t *testing.T) {
 		t.Errorf("Invalid position found was: %s\nexpected:%s",
 			imgs.Position("140"), e)
 	}
-
+	// Must build a file prior to running this
+	imgs.Combine()
+	imgs.OutputPath(glob)
 	output := imgs.CSS("140")
 	if e := `url("test-585dca.png") -96px 0px`; output != e {
 		t.Errorf("Invalid CSS generated on test     was: %s\nexpected: %s",
@@ -182,8 +186,9 @@ func TestSpriteExport(t *testing.T) {
 func TestSpriteDecode(t *testing.T) {
 	//Should fail with unable to find file
 	i := ImageList{}
-	err := i.Decode("notafile")
-
+	i.Decode("notafile")
+	i.Combine()
+	err := i.OutputPath("notafile")
 	if e := "png: invalid format: invalid image size: 0x0"; err.Error() != e {
 		t.Errorf("Unexpected error thrown was: %s expected: %s",
 			e, err)
