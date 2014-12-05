@@ -48,8 +48,11 @@ func TestSpriteCombine(t *testing.T) {
 	glob := []string{"test/139.jpg", "test/140.jpg"}
 	imgs.Decode(glob...)
 	imgs.Vertical = true
-	imgs.Combine()
-	imgs.OutputPath(glob[0])
+	err := imgs.Combine()
+
+	if err != nil {
+		t.Error(err)
+	}
 	if imgs.Height() != 279 {
 		t.Errorf("Invalid Height found %d, wanted %d", imgs.Height(), 279)
 	}
@@ -134,7 +137,6 @@ func TestSpriteImageDimensions(t *testing.T) {
 	}
 	// Must build a file prior to running this
 	imgs.Combine()
-	imgs.OutputPath(glob)
 	output := imgs.CSS("140")
 	if e := `url("test-585dca.png") -96px 0px`; output != e {
 		t.Errorf("Invalid CSS generated on test     was: %s\nexpected: %s",
@@ -187,8 +189,7 @@ func TestSpriteDecode(t *testing.T) {
 	//Should fail with unable to find file
 	i := ImageList{}
 	i.Decode("notafile")
-	i.Combine()
-	err := i.OutputPath("notafile")
+	err := i.Combine()
 	if e := "png: invalid format: invalid image size: 0x0"; err.Error() != e {
 		t.Errorf("Unexpected error thrown was: %s expected: %s",
 			e, err)
@@ -254,7 +255,8 @@ func TestSpriteError(t *testing.T) {
 	strFirst := strings.Split(str, "\n")[0]
 	if e := "png: unsupported feature: compression, " +
 		"filter or interlace method"; e != strFirst {
-		t.Errorf("Interlaced error not received expected:\n%s was:\n%s",
+		// No longer an error in 1.4+
+		t.Skipf("Interlaced error not received expected:\n%s was:\n%s",
 			e, strFirst)
 	}
 

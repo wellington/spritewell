@@ -32,7 +32,7 @@ type ImageList struct {
 	Out                           draw.Image
 	OutFile                       string
 	Combined                      bool
-	Files                         []string
+	Globs, Files                  []string
 	Vertical                      bool
 }
 
@@ -268,15 +268,15 @@ func (l *ImageList) Width() int {
 
 // Build an output file location based on
 // [genimagedir|location of file matched by glob] + glob pattern
-func (l *ImageList) OutputPath(globpath string) error {
-
+func (l *ImageList) OutputPath() error {
+	// This only looks at the first glob pattern
+	globpath := l.Globs[0]
 	path := filepath.Dir(globpath)
 	if path == "." {
 		path = "image"
 	}
 	path = strings.Replace(path, "/", "", -1)
 	ext := filepath.Ext(globpath)
-
 	// Encode the image so the bytestring can feed into md5.Sum
 	var b bytes.Buffer
 	err := png.Encode(&b, l.Out)
@@ -290,7 +290,7 @@ func (l *ImageList) OutputPath(globpath string) error {
 	hasher := md5.New()
 	hasher.Write(b.Bytes())
 	salt := hex.EncodeToString(hasher.Sum(nil))[:6]
-	l.OutFile += path + "-" + salt + ext
+	l.OutFile = path + "-" + salt + ext
 	return nil
 }
 
@@ -311,7 +311,7 @@ func (l *ImageList) Decode(rest ...string) error {
 		}
 		paths = append(paths, matches...)
 	}
-
+	l.Globs = paths
 	for _, path := range paths {
 		f, err := os.Open(path)
 		if err != nil {
@@ -373,7 +373,10 @@ func (l *ImageList) Combine() error {
 
 	// Set the buf so bytes.Buffer works
 	err := png.Encode(&l.Buffer, goimg)
-	return err
+	if err != nil {
+		return err
+	}
+	return l.OutputPath()
 }
 
 func randString(n int) string {
@@ -391,7 +394,6 @@ func (l *ImageList) Export() (string, error) {
 	// Use the auto generated path if none is specified
 	// TODO: Differentiate relative file path (in css) to this abs one
 	abs := filepath.Join(l.GenImgDir, filepath.Base(l.OutFile))
-
 	if _, err := os.Stat(abs); os.IsExist(err) {
 		return abs, nil
 	}
