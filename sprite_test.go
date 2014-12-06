@@ -153,11 +153,11 @@ func TestSpriteGlob(t *testing.T) {
 	imgs.Decode("*.png")
 
 	// Test [Un]successful lookups
-	if f := imgs.Lookup("test/139.png"); f != 0 {
+	if f := imgs.Lookup("139.png"); f != 0 {
 		t.Errorf("Invalid file location given found %d, expected %d", f, 0)
 	}
 
-	if f := imgs.Lookup("test/140.png"); f != 1 {
+	if f := imgs.Lookup("140.png"); f != 1 {
 		t.Errorf("Invalid file location given found %d, expected %d", f, 1)
 	}
 

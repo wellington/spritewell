@@ -32,7 +32,7 @@ type ImageList struct {
 	Out                           draw.Image
 	OutFile                       string
 	Combined                      bool
-	Globs, Files                  []string
+	Globs, Paths                  []string
 	Vertical                      bool
 }
 
@@ -51,12 +51,12 @@ func funnyNames() string {
 
 // String generates CSS path to output file
 func (l ImageList) String() string {
-	files := ""
-	for _, file := range l.Files {
-		files += strings.TrimSuffix(filepath.Base(file),
-			filepath.Ext(file)) + " "
+	paths := ""
+	for _, path := range l.Paths {
+		path += strings.TrimSuffix(filepath.Base(path),
+			filepath.Ext(path)) + " "
 	}
-	return files
+	return paths
 }
 
 // Return relative path to File
@@ -64,7 +64,7 @@ func (l ImageList) String() string {
 func (l ImageList) File(f string) string {
 	pos := l.Lookup(f)
 	if pos > -1 {
-		return l.Files[pos]
+		return l.Paths[pos]
 	}
 	return ""
 }
@@ -72,7 +72,7 @@ func (l ImageList) File(f string) string {
 func (l ImageList) Lookup(f string) int {
 	var base string
 	pos := -1
-	for i, v := range l.Files {
+	for i, v := range l.Paths {
 		base = filepath.Base(v)
 		base = strings.TrimSuffix(base, filepath.Ext(v))
 		if f == v {
@@ -135,8 +135,8 @@ func (l ImageList) Map(name string) string {
 	var res []string
 	rel, _ := filepath.Rel(l.BuildDir, l.GenImgDir)
 	for i := range l.GoImages {
-		base := strings.TrimSuffix(filepath.Base(l.Files[i]),
-			filepath.Ext(l.Files[i]))
+		base := strings.TrimSuffix(filepath.Base(l.Paths[i]),
+			filepath.Ext(l.Paths[i]))
 		res = append(res, fmt.Sprintf(
 			"%s: map_merge(%s,(%s: (width: %d, height: %d, "+
 				"x: %d, y: %d, url: '%s')))",
@@ -303,7 +303,7 @@ func (l *ImageList) Decode(rest ...string) error {
 	var (
 		paths []string
 	)
-
+	absImageDir, _ := filepath.Abs(l.ImageDir)
 	for _, r := range rest {
 		matches, err := filepath.Glob(filepath.Join(l.ImageDir, r))
 		if err != nil {
@@ -317,8 +317,20 @@ func (l *ImageList) Decode(rest ...string) error {
 				panic(err)
 			}
 		}
+		rel := make([]string, len(matches))
+		for i := range rel {
+			// Attempt both relative and absolute to path
+			if p, err := filepath.Rel(l.ImageDir, matches[i]); err == nil {
+				rel[i] = p
+			} else if p, err := filepath.Rel(absImageDir, matches[i]); err == nil {
+				rel[i] = p
+			}
+		}
+		l.Paths = append(l.Paths, rel...)
 		paths = append(paths, matches...)
 	}
+	// turn paths into relative paths to the files
+
 	l.Globs = paths
 	for _, path := range paths {
 		f, err := os.Open(path)
@@ -334,10 +346,9 @@ func (l *ImageList) Decode(rest ...string) error {
 			continue
 		}
 		l.GoImages = append(l.GoImages, goimg)
-		l.Files = append(l.Files, path)
 	}
 
-	if len(l.Files) == 0 {
+	if len(l.Paths) == 0 {
 		log.Printf("No images were found for glob: %v",
 			rest,
 		)
