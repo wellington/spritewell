@@ -419,7 +419,7 @@ func (l *ImageList) Export() (string, error) {
 	// Use the auto generated path if none is specified
 	// TODO: Differentiate relative file path (in css) to this abs one
 	abs := filepath.Join(l.GenImgDir, filepath.Base(l.OutFile))
-	if _, err := os.Stat(abs); os.IsExist(err) {
+	if _, err := os.Stat(abs); err == nil {
 		return abs, nil
 	}
 
@@ -441,7 +441,10 @@ func (l *ImageList) Export() (string, error) {
 	l.Combine()
 	defer fo.Close()
 
-	_, err = io.Copy(fo, &l.Buffer)
+	n, err := io.Copy(fo, &l.Buffer)
+	if n == 0 {
+		log.Fatalf("no bytes written of: %d", l.Buffer.Len())
+	}
 	if err != nil {
 		log.Printf("Failed to create: %s\n%s", abs, err)
 		return "", err
