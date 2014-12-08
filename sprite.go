@@ -17,6 +17,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"image/draw"
 	_ "image/gif"
@@ -36,6 +37,13 @@ type ImageList struct {
 	Combined                      bool
 	Globs, Paths                  []string
 	Vertical                      bool
+}
+
+// SafeImageMap provides a thread-safe data structure for
+// creating maps of ImageLists
+type SafeImageMap struct {
+	sync.RWMutex
+	M map[string]ImageList
 }
 
 func funnyNames() string {
