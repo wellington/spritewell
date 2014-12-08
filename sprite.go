@@ -122,37 +122,6 @@ func (l ImageList) Y(pos int) int {
 	return p.Y
 }
 
-// Map builds a sass-map with the information contained in ImageList.
-// This is deprecated.
-func (l ImageList) Map(name string) string {
-	var res []string
-	rel, _ := filepath.Rel(l.BuildDir, l.GenImgDir)
-	for i := range l.GoImages {
-		base := strings.TrimSuffix(filepath.Base(l.Paths[i]),
-			filepath.Ext(l.Paths[i]))
-		res = append(res, fmt.Sprintf(
-			"%s: map_merge(%s,(%s: (width: %d, height: %d, "+
-				"x: %d, y: %d, url: '%s')))",
-			name, name,
-			base, l.ImageWidth(i), l.ImageHeight(i),
-			l.X(i), l.Y(i), filepath.Join(rel, l.OutFile),
-		))
-	}
-	return "(); " + strings.Join(res, "; ") + ";"
-}
-
-func (l ImageList) CSS(s string) string {
-	pos := l.Lookup(s)
-	if pos == -1 {
-		log.Printf("File not found: %s\n Try one of: %s",
-			s, l)
-		return ""
-	}
-
-	return fmt.Sprintf(`url("%s") %s`,
-		l.OutFile, l.Position(s))
-}
-
 func (l ImageList) Position(s string) string {
 	pos := l.Lookup(s)
 	if pos == -1 {

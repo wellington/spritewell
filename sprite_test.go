@@ -131,7 +131,8 @@ func ExampleSpriteExport() {
 	// This shouldn't be part of spritewell
 	imgs := ImageList{
 		ImageDir:  ".",
-		GenImgDir: "test/build",
+		BuildDir:  "test/build",
+		GenImgDir: "test/build/img",
 	}
 	imgs.Decode("test/*.png")
 	of, err := imgs.Combine()
@@ -245,11 +246,6 @@ func TestSpriteError(t *testing.T) {
 			e, imgs.File("notfound"))
 	}
 
-	out.Reset()
-	if e := ""; imgs.CSS("") != e {
-		t.Errorf("Invalid css for non-file expected: %s, was: %s",
-			e, imgs.CSS(""))
-	}
 	out.Reset()
 	if e := ""; imgs.Position("") != e {
 		t.Errorf("Invalid css for non-file expected: %s, was: %s",
