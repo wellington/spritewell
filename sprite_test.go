@@ -246,10 +246,5 @@ func TestSpriteError(t *testing.T) {
 			e, imgs.File("notfound"))
 	}
 
-	out.Reset()
-	if e := ""; imgs.Position("") != e {
-		t.Errorf("Invalid css for non-file expected: %s, was: %s",
-			e, imgs.Position(""))
-	}
 	log.SetOutput(os.Stdout)
 }

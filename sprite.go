@@ -122,17 +122,6 @@ func (l ImageList) Y(pos int) int {
 	return p.Y
 }
 
-func (l ImageList) Position(s string) string {
-	pos := l.Lookup(s)
-	if pos == -1 {
-		log.Printf("File not found: %s\n Try one of: %s",
-			s, l)
-		return ""
-	}
-
-	return fmt.Sprintf(`%dpx %dpx`, -l.X(pos), -l.Y(pos))
-}
-
 func (l ImageList) inline() []byte {
 
 	r, w := io.Pipe()
