@@ -441,7 +441,7 @@ func (l *ImageList) Export() (string, error) {
 	l.Combine()
 	defer fo.Close()
 
-	err = png.Encode(fo, l.Out)
+	_, err = io.Copy(fo, &l.Buffer)
 	if err != nil {
 		log.Printf("Failed to create: %s\n%s", abs, err)
 		return "", err
