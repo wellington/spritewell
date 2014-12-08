@@ -24,6 +24,8 @@ import (
 	"image/png"
 )
 
+var formats = []string{"png", "gif", "jpg"}
+
 type GoImages []image.Image
 type ImageList struct {
 	bytes.Buffer
@@ -268,7 +270,7 @@ func (l *ImageList) Width() int {
 
 // Build an output file location based on
 // [genimagedir|location of file matched by glob] + glob pattern
-func (l *ImageList) OutputPath() error {
+func (l *ImageList) OutputPath() (string, error) {
 	// This only looks at the first glob pattern
 	globpath := l.Globs[0]
 	path := filepath.Dir(globpath)
@@ -277,21 +279,13 @@ func (l *ImageList) OutputPath() error {
 	}
 	path = strings.Replace(path, "/", "", -1)
 	ext := filepath.Ext(globpath)
-	// Encode the image so the bytestring can feed into md5.Sum
-	var b bytes.Buffer
-	err := png.Encode(&b, l.Out)
-	if err != nil {
-		// Image is empty or has errors, generate a funny filename
-		l.OutFile = funnyNames() + "-" + randString(2) + ".png"
-		return err
-	}
 	// Remove invalid characters from path
 	path = strings.Replace(path, "*", "", -1)
 	hasher := md5.New()
-	hasher.Write(b.Bytes())
+	hasher.Write(l.Buffer.Bytes())
 	salt := hex.EncodeToString(hasher.Sum(nil))[:6]
 	l.OutFile = path + "-" + salt + ext
-	return nil
+	return l.OutFile, nil
 }
 
 // Decode accepts a variable number of glob patterns.  The ImageDir
@@ -337,13 +331,14 @@ func (l *ImageList) Decode(rest ...string) error {
 		if err != nil {
 			panic(err)
 		}
-		goimg, str, err := image.Decode(f)
-		_ = str // Image format ie. png
+		goimg, _, err := image.Decode(f)
 		if err != nil {
-			// Print errors for images that are not currently supported
-			// by Go's image library
-			log.Printf("Error processing: %s\n%s", path, err)
-			continue
+			ext := filepath.Ext(path)
+			if !CanDecode(ext) {
+				return fmt.Errorf("format: %s not supported", ext)
+			} else {
+				return fmt.Errorf("Error processing: %s\n%s", path, err)
+			}
 		}
 		l.GoImages = append(l.GoImages, goimg)
 	}
@@ -357,16 +352,27 @@ func (l *ImageList) Decode(rest ...string) error {
 	return nil
 }
 
+// CanDecode checks if the file extension is supported by
+// spritewell.
+func CanDecode(ext string) bool {
+	for i := range formats {
+		if ext == formats[i] {
+			return true
+		}
+	}
+	return false
+}
+
 // Combine all images in the slice into a final output
 // image.
-func (l *ImageList) Combine() error {
+func (l *ImageList) Combine() (string, error) {
 
 	var (
 		maxW, maxH int
 	)
 
 	if l.Out != nil {
-		return errors.New("Sprite is empty")
+		return "", errors.New("Sprite is empty")
 	}
 
 	maxW, maxH = l.Width(), l.Height()
@@ -393,7 +399,7 @@ func (l *ImageList) Combine() error {
 	// Set the buf so bytes.Buffer works
 	err := png.Encode(&l.Buffer, goimg)
 	if err != nil {
-		return err
+		return "", err
 	}
 	return l.OutputPath()
 }

@@ -48,7 +48,7 @@ func TestSpriteCombine(t *testing.T) {
 	glob := []string{"test/139.jpg", "test/140.jpg"}
 	imgs.Decode(glob...)
 	imgs.Vertical = true
-	err := imgs.Combine()
+	_, err := imgs.Combine()
 
 	if err != nil {
 		t.Error(err)
@@ -167,29 +167,29 @@ func TestSpriteGlob(t *testing.T) {
 }
 
 func TestSpriteExport(t *testing.T) {
-	return
 	// This shouldn't be part of spritewell
 	imgs := ImageList{
 		ImageDir:  ".",
 		GenImgDir: "test/build",
 	}
 	imgs.Decode("test/*.png")
-	of := imgs.OutFile
+	of, err := imgs.Combine()
+
+	if err != nil {
+		t.Error(err)
+	}
 
 	if e := "test-585dca.png"; e != of {
 		t.Errorf("Outfile misnamed \n     was: %s\nexpected: %s", of, e)
 	}
 
-	if e := `(); $sprites: map_merge($sprites,(139: (width: 96, height: 139, x: 0, y: 0, url: 'build/test/testimg-d65510.png'))); $sprites: map_merge($sprites,(140: (width: 96, height: 140, x: 96, y: 0, url: 'build/test/testimg-d65510.png')));`; e != imgs.Map("$sprites") {
-		t.Error("Map mismatch")
-	}
 }
 
 func TestSpriteDecode(t *testing.T) {
 	//Should fail with unable to find file
 	i := ImageList{}
 	i.Decode("notafile")
-	err := i.Combine()
+	_, err := i.Combine()
 	if e := "png: invalid format: invalid image size: 0x0"; err.Error() != e {
 		t.Errorf("Unexpected error thrown was: %s expected: %s",
 			e, err)
