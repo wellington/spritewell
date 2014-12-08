@@ -148,6 +148,8 @@ func ExampleSpriteExport() {
 }
 
 func TestSpriteDecode(t *testing.T) {
+	var out bytes.Buffer
+	log.SetOutput(&out)
 	//Should fail with unable to find file
 	i := ImageList{}
 	i.Decode("notafile")
@@ -160,13 +162,14 @@ func TestSpriteDecode(t *testing.T) {
 	if len(i.GoImages) > 0 {
 		t.Errorf("Found a non-existant file")
 	}
+	log.SetOutput(os.Stdout)
 }
 
 func TestSpriteHorizontal(t *testing.T) {
 
 	imgs := ImageList{}
-	imgs.Decode("test/139.jpg", "test/140.jpg")
 	imgs.Pack = "horz"
+	imgs.Decode("test/139.jpg", "test/140.jpg")
 	imgs.Combine()
 
 	bounds := imgs.Dimensions()
@@ -185,6 +188,50 @@ func TestSpriteHorizontal(t *testing.T) {
 	if e := 0; imgs.Y(1) != e {
 		t.Errorf("Invalid Y found %d, wanted %d", imgs.Y(1), e)
 	}
+}
+
+func TestPadding(t *testing.T) {
+
+	imgs := ImageList{}
+	imgs.Padding = 10
+	imgs.Pack = "horz"
+	imgs.Decode("test/139.jpg", "test/140.jpg")
+
+	bounds := imgs.Dimensions()
+	if e := 140; bounds.Y != e {
+		t.Errorf("Invalid Height found %d, wanted %d", bounds.Y, e)
+	}
+
+	if e := 202; bounds.X != e {
+		t.Errorf("Invalid Width found %d, wanted %d", bounds.X, e)
+	}
+
+	if e := 106; imgs.X(1) != e {
+		t.Errorf("Invalid X found %d, wanted %d", imgs.X(1), e)
+	}
+
+	if e := 0; imgs.Y(1) != e {
+		t.Errorf("Invalid Y found %d, wanted %d", imgs.Y(1), e)
+	}
+
+	imgs.Pack = "vert"
+	bounds = imgs.Dimensions()
+	if e := 289; bounds.Y != e {
+		t.Errorf("Invalid Height found %d, wanted %d", bounds.Y, e)
+	}
+
+	if e := 96; bounds.X != e {
+		t.Errorf("Invalid Width found %d, wanted %d", bounds.X, e)
+	}
+
+	if e := 0; imgs.X(1) != e {
+		t.Errorf("Invalid X found %d, wanted %d", imgs.X(1), e)
+	}
+
+	if e := 149; imgs.Y(1) != e {
+		t.Errorf("Invalid Y found %d, wanted %d", imgs.Y(1), e)
+	}
+
 }
 
 func TestSpriteInline(t *testing.T) {

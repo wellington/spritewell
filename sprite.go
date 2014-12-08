@@ -327,12 +327,12 @@ type Pos struct {
 // the sprite file will need to be regenerated via Decode.
 func (l *ImageList) GetPack(pos int) Pos {
 	// Default is vertical
-	if l.Pack == "" {
+	if l.Pack == "vert" {
 		return l.PackVertical(pos)
 	} else if l.Pack == "horz" {
 		return l.PackHorizontal(pos)
 	}
-	return Pos{0, 0}
+	return l.PackVertical(pos)
 }
 
 // PackVertical finds the Pos for a vertically packed sprite
@@ -343,7 +343,11 @@ func (l *ImageList) PackVertical(pos int) Pos {
 	var x, y int
 	var rect image.Rectangle
 	// there are n-1 paddings in an image list
-	y -= l.Padding * (pos - 1)
+	y = l.Padding * (pos)
+	// No padding on the outside of the image
+	if pos == len(l.GoImages) {
+		y -= l.Padding
+	}
 	for i := 1; i <= pos; i++ {
 		rect = l.GoImages[i-1].Bounds()
 		y += rect.Dy()
@@ -364,8 +368,13 @@ func (l *ImageList) PackHorizontal(pos int) Pos {
 	}
 	var x, y int
 	var rect image.Rectangle
+
 	// there are n-1 paddings in an image list
-	x -= l.Padding * (pos - 1)
+	x = l.Padding * pos
+	// No padding on the outside of the image
+	if pos == len(l.GoImages) {
+		x -= l.Padding
+	}
 	for i := 1; i <= pos; i++ {
 		rect = l.GoImages[i-1].Bounds()
 		x += rect.Dx()
