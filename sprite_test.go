@@ -2,6 +2,7 @@ package spritewell
 
 import (
 	"bytes"
+	"fmt"
 	"log"
 	"os"
 	"path/filepath"
@@ -47,18 +48,18 @@ func TestSpriteCombine(t *testing.T) {
 	imgs := ImageList{}
 	glob := []string{"test/139.jpg", "test/140.jpg"}
 	imgs.Decode(glob...)
-	imgs.Vertical = true
 	_, err := imgs.Combine()
 
 	if err != nil {
 		t.Error(err)
 	}
-	if imgs.Height() != 279 {
-		t.Errorf("Invalid Height found %d, wanted %d", imgs.Height(), 279)
+	bounds := imgs.Dimensions()
+	if bounds.Y != 279 {
+		t.Errorf("Invalid Height found %d, wanted %d", bounds.Y, 279)
 	}
 
-	if imgs.Width() != 96 {
-		t.Errorf("Invalid Width found %d, wanted %d", imgs.Width(), 192)
+	if bounds.X != 96 {
+		t.Errorf("Invalid Width found %d, wanted %d", bounds.X, 192)
 	}
 
 	if x := imgs.X(1); x != 0 {
@@ -81,15 +82,10 @@ func TestSpriteCombine(t *testing.T) {
 			imgs.SImageHeight("150"), e)
 	}
 
-	if e := ""; e != imgs.Dimensions("150") {
-		t.Errorf("Non-existant image width invalid"+
-			"\n    was:%s\nexpected:%s",
-			imgs.Dimensions("150"), e)
-	}
-
 	//Quick cache check
 	imgs.Combine()
-	if imgs.Height() != 279 || imgs.Width() != 96 {
+	bounds = imgs.Dimensions()
+	if bounds.Y != 279 || bounds.X != 96 {
 		t.Errorf("Cache invalid")
 	}
 
@@ -108,41 +104,6 @@ func TestSpriteCombine(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-}
-
-// Test image dimension calls
-func TestSpriteImageDimensions(t *testing.T) {
-	imgs := ImageList{}
-	glob := "test/*.png"
-	imgs.Decode(glob)
-
-	if e := "width: 96px;\nheight: 139px"; e != imgs.Dimensions("139") {
-		t.Errorf("Dimensions invalid was: %s\nexpected: %s\n",
-			imgs.Dimensions("139"), e)
-	}
-
-	if e := 139; e != imgs.SImageHeight("139") {
-		t.Errorf("Height invalid    was:%d\nexpected:%d",
-			imgs.SImageHeight("139"), e)
-	}
-
-	if e := 96; e != imgs.SImageWidth("139") {
-		t.Errorf("Height invalid was:%d\nexpected:%d",
-			imgs.SImageWidth("139"), e)
-	}
-
-	if e := "-96px 0px"; imgs.Position("140") != e {
-		t.Errorf("Invalid position found was: %s\nexpected:%s",
-			imgs.Position("140"), e)
-	}
-	// Must build a file prior to running this
-	imgs.Combine()
-	output := imgs.CSS("140")
-	if e := `url("test-585dca.png") -96px 0px`; output != e {
-		t.Errorf("Invalid CSS generated on test     was: %s\nexpected: %s",
-			output, e)
-	}
-
 }
 
 //Test file globbing
@@ -166,7 +127,7 @@ func TestSpriteGlob(t *testing.T) {
 	}
 }
 
-func TestSpriteExport(t *testing.T) {
+func ExampleSpriteExport() {
 	// This shouldn't be part of spritewell
 	imgs := ImageList{
 		ImageDir:  ".",
@@ -176,13 +137,13 @@ func TestSpriteExport(t *testing.T) {
 	of, err := imgs.Combine()
 
 	if err != nil {
-		t.Error(err)
+		fmt.Println(err)
 	}
 
-	if e := "test-585dca.png"; e != of {
-		t.Errorf("Outfile misnamed \n     was: %s\nexpected: %s", of, e)
-	}
+	fmt.Println(of)
 
+	// Output:
+	// test-d01d06.png
 }
 
 func TestSpriteDecode(t *testing.T) {
@@ -204,15 +165,16 @@ func TestSpriteHorizontal(t *testing.T) {
 
 	imgs := ImageList{}
 	imgs.Decode("test/139.jpg", "test/140.jpg")
-	imgs.Vertical = false
+	imgs.Pack = "horz"
 	imgs.Combine()
 
-	if e := 140; imgs.Height() != e {
-		t.Errorf("Invalid Height found %d, wanted %d", imgs.Height(), e)
+	bounds := imgs.Dimensions()
+	if e := 140; bounds.Y != e {
+		t.Errorf("Invalid Height found %d, wanted %d", bounds.Y, e)
 	}
 
-	if e := 192; imgs.Width() != e {
-		t.Errorf("Invalid Width found %d, wanted %d", imgs.Width(), e)
+	if e := 192; bounds.X != e {
+		t.Errorf("Invalid Width found %d, wanted %d", bounds.X, e)
 	}
 
 	if e := 96; imgs.X(1) != e {

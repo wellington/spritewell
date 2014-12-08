@@ -36,7 +36,8 @@ type ImageList struct {
 	OutFile                       string
 	Combined                      bool
 	Globs, Paths                  []string
-	Vertical                      bool
+	Padding                       int    // Padding in pixels
+	Pack                          string // default is vertical
 }
 
 // SafeImageMap provides a thread-safe data structure for
@@ -109,34 +110,16 @@ func (l ImageList) Lookup(f string) int {
 // on the layout (vertical/horizontal) and
 // position in Image slice
 func (l ImageList) X(pos int) int {
-	x := 0
-	if pos > len(l.GoImages) {
-		return -1
-	}
-	if l.Vertical {
-		return 0
-	}
-	for i := 0; i < pos; i++ {
-		x += l.ImageWidth(i)
-	}
-	return x
+	p := l.GetPack(pos)
+	return p.X
 }
 
 // Return the Y position of an image based
 // on the layout (vertical/horizontal) and
 // position in Image slice
 func (l ImageList) Y(pos int) int {
-	y := 0
-	if pos > len(l.GoImages) {
-		return -1
-	}
-	if !l.Vertical {
-		return 0
-	}
-	for i := 0; i < pos; i++ {
-		y += l.ImageHeight(i)
-	}
-	return y
+	p := l.GetPack(pos)
+	return p.Y
 }
 
 // Map builds a sass-map with the information contained in ImageList.
@@ -179,15 +162,6 @@ func (l ImageList) Position(s string) string {
 	}
 
 	return fmt.Sprintf(`%dpx %dpx`, -l.X(pos), -l.Y(pos))
-}
-
-func (l ImageList) Dimensions(s string) string {
-	if pos := l.Lookup(s); pos > -1 {
-
-		return fmt.Sprintf("width: %dpx;\nheight: %dpx",
-			l.ImageWidth(pos), l.ImageHeight(pos))
-	}
-	return ""
 }
 
 func (l ImageList) inline() []byte {
@@ -245,35 +219,10 @@ func (l ImageList) ImageHeight(pos int) int {
 	return l.GoImages[pos].Bounds().Dy()
 }
 
-// Return the cumulative Height of the
-// image slice.
-func (l *ImageList) Height() int {
-	h := 0
-	ll := *l
-
-	for pos, _ := range ll.GoImages {
-		if l.Vertical {
-			h += ll.ImageHeight(pos)
-		} else {
-			h = int(math.Max(float64(h), float64(ll.ImageHeight(pos))))
-		}
-	}
-	return h
-}
-
-// Return the cumulative Width of the
-// image slice.
-func (l *ImageList) Width() int {
-	w := 0
-
-	for pos, _ := range l.GoImages {
-		if !l.Vertical {
-			w += l.ImageWidth(pos)
-		} else {
-			w = int(math.Max(float64(w), float64(l.ImageWidth(pos))))
-		}
-	}
-	return w
+// Dimensions is the total W,H pixels of the generate sprite
+func (l *ImageList) Dimensions() Pos {
+	// Size of array + 1 gets the dimensions of the entire sprite
+	return l.GetPack(len(l.GoImages))
 }
 
 // Build an output file location based on
@@ -383,24 +332,20 @@ func (l *ImageList) Combine() (string, error) {
 		return "", errors.New("Sprite is empty")
 	}
 
-	maxW, maxH = l.Width(), l.Height()
-	curH, curW := 0, 0
+	pos := l.Dimensions()
+	maxW, maxH = pos.X, pos.Y
 
 	goimg := image.NewRGBA(image.Rect(0, 0, maxW, maxH))
 	l.Out = goimg
-	for _, img := range l.GoImages {
+	for i := range l.GoImages {
 
-		draw.Draw(goimg, goimg.Bounds(), img,
+		pos := l.GetPack(i)
+
+		draw.Draw(goimg, goimg.Bounds(), l.GoImages[i],
 			image.Point{
-				X: curW,
-				Y: curH,
+				X: -pos.X,
+				Y: -pos.Y,
 			}, draw.Src)
-
-		if l.Vertical {
-			curH -= img.Bounds().Dy()
-		} else {
-			curW -= img.Bounds().Dx()
-		}
 	}
 	l.Combined = true
 
@@ -410,6 +355,70 @@ func (l *ImageList) Combine() (string, error) {
 		return "", err
 	}
 	return l.OutputPath()
+}
+
+// Pos represents the x, y coordinates of an image
+// in the sprite sheet.
+type Pos struct {
+	X, Y int
+}
+
+// GetPack retrieves the Pos of an image in the
+// list of images.
+// TODO: Changing l.Pack will update the positions, but
+// the sprite file will need to be regenerated via Decode.
+func (l *ImageList) GetPack(pos int) Pos {
+	// Default is vertical
+	if l.Pack == "" {
+		return l.PackVertical(pos)
+	} else if l.Pack == "horz" {
+		return l.PackHorizontal(pos)
+	}
+	return Pos{0, 0}
+}
+
+// PackVertical finds the Pos for a vertically packed sprite
+func (l *ImageList) PackVertical(pos int) Pos {
+	if pos == -1 || pos == 0 {
+		return Pos{0, 0}
+	}
+	var x, y int
+	var rect image.Rectangle
+	// there are n-1 paddings in an image list
+	y -= l.Padding * (pos - 1)
+	for i := 1; i <= pos; i++ {
+		rect = l.GoImages[i-1].Bounds()
+		y += rect.Dy()
+		if pos == len(l.GoImages) {
+			x = int(math.Max(float64(x), float64(rect.Dx())))
+		}
+	}
+
+	return Pos{
+		x, y,
+	}
+}
+
+// PackHorzontal finds the Pos for a horizontally packed sprite
+func (l *ImageList) PackHorizontal(pos int) Pos {
+	if pos == -1 || pos == 0 {
+		return Pos{0, 0}
+	}
+	var x, y int
+	var rect image.Rectangle
+	// there are n-1 paddings in an image list
+	x -= l.Padding * (pos - 1)
+	for i := 1; i <= pos; i++ {
+		rect = l.GoImages[i-1].Bounds()
+		x += rect.Dx()
+		if pos == len(l.GoImages) {
+			y = int(math.Max(float64(y), float64(rect.Dy())))
+		}
+	}
+
+	return Pos{
+		x, y,
+	}
 }
 
 func randString(n int) string {
