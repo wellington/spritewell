@@ -295,3 +295,17 @@ func TestSpriteError(t *testing.T) {
 
 	log.SetOutput(os.Stdout)
 }
+
+func TestCanDecode(t *testing.T) {
+	fileMap := []string{"file.png", "file.jpg", "file.gif",
+		"dir/dir/file.png", "file.svg"}
+
+	values := []bool{true, true, true, true, false}
+
+	for i := range fileMap {
+		b := CanDecode(filepath.Ext(fileMap[i]))
+		if values[i] != b {
+			t.Errorf("got: %t expected: %t", b, values[i])
+		}
+	}
+}
