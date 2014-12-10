@@ -25,7 +25,7 @@ import (
 	"image/png"
 )
 
-var formats = []string{"png", "gif", "jpg"}
+var formats = []string{".png", ".gif", ".jpg"}
 
 type GoImages []image.Image
 type ImageList struct {
@@ -259,7 +259,7 @@ func (l *ImageList) Decode(rest ...string) error {
 	}
 
 	if len(l.Paths) == 0 {
-		log.Printf("No images were found for glob: %v",
+		return fmt.Errorf("No images were found for pattern: %v",
 			rest,
 		)
 	}
