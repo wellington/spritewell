@@ -186,20 +186,18 @@ func (l *ImageList) Dimensions() Pos {
 // Build an output file location based on
 // [genimagedir|location of file matched by glob] + glob pattern
 func (l *ImageList) OutputPath() (string, error) {
-	// This only looks at the first glob pattern
-	globpath := l.Globs[0]
-	path := filepath.Dir(globpath)
+	path, err := filepath.Rel(l.BuildDir, l.GenImgDir)
+	if err != nil {
+		return "", err
+	}
 	if path == "." {
 		path = "image"
 	}
-	path = strings.Replace(path, "/", "", -1)
-	ext := filepath.Ext(globpath)
-	// Remove invalid characters from path
-	path = strings.Replace(path, "*", "", -1)
+
 	hasher := md5.New()
-	hasher.Write(l.Buffer.Bytes())
+	hasher.Write([]byte(path))
 	salt := hex.EncodeToString(hasher.Sum(nil))[:6]
-	l.OutFile = path + "-" + salt + ext
+	l.OutFile = path + "-" + salt + ".png"
 	return l.OutFile, nil
 }
 
