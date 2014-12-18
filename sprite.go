@@ -197,7 +197,7 @@ func (l *ImageList) OutputPath() (string, error) {
 	hasher := md5.New()
 	hasher.Write([]byte(path))
 	salt := hex.EncodeToString(hasher.Sum(nil))[:6]
-	l.OutFile = path + "-" + salt + ".png"
+	l.OutFile = filepath.Join(path, salt+".png")
 	return l.OutFile, nil
 }
 
@@ -401,11 +401,13 @@ func (l *ImageList) Export() (string, error) {
 	// Use the auto generated path if none is specified
 	// TODO: Differentiate relative file path (in css) to this abs one
 	abs := filepath.Join(l.GenImgDir, filepath.Base(l.OutFile))
-	if _, err := os.Stat(abs); err == nil {
-		return abs, nil
-	}
-
 	fo, err := os.Create(abs)
+	if err != nil {
+		if _, err := os.Stat(abs); err == nil {
+			return abs, nil
+		}
+		return "", err
+	}
 	if err != nil {
 		log.Printf("Failed to create file: %s\n", abs)
 		log.Print(err)
@@ -423,6 +425,6 @@ func (l *ImageList) Export() (string, error) {
 		log.Printf("Failed to create: %s\n%s", abs, err)
 		return "", err
 	}
-	// log.Print("Created file: ", abs)
+	log.Print("Created sprite: ", abs)
 	return abs, nil
 }
