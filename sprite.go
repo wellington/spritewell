@@ -14,12 +14,12 @@ import (
 	"log"
 	"math"
 	mrand "math/rand"
+	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
 	"sync"
-	"unicode/utf8"
 
 	"image/draw"
 	_ "image/gif"
@@ -433,28 +433,45 @@ func (l *ImageList) Export() (string, error) {
 
 // InlineSVG accepts a byte slice and returns a valid utf8 svg+xml bytes.
 // Any invalid utf8 runes are removed, unnecessary newline and whitespace
-// are removed from the input.
+// are removed from the input.  This encoding is more error prone, but uses
+// less space.
 func InlineSVG(in []byte) []byte {
-	//enc := make([]byte, base64.StdEncoding.EncodedLen(len(*in)))
-	//base64.StdEncoding.Encode(enc, *in)
-	runes := bytes.Runes(in)
-	clean := make([]byte, len(runes))
-	pos := 0
-	// Clean for utf8 valid runes, is this necessary?
-	for _, v := range runes {
-		if utf8.ValidRune(v) {
-			pos += utf8.EncodeRune(clean[pos:], v)
-		}
-	}
-
-	reg := regexp.MustCompile(">\\s+<")
-
-	// newlines break svg parsing in the browser
-	new := bytes.Replace(clean, []byte("\r\n"), []byte(""), -1)
-	new = reg.ReplaceAll(new, []byte("><"))
 	out := []byte(`url("data:image/svg+xml;utf8,`)
+	new := inlineSVG(in, false)
 	out = append(out, new...)
 	out = append(out, []byte(`")`)...)
 
 	return out
+}
+
+// InlineSVG accepts a byte slice and returns a base64 byte slice
+// compatible with image/svg+xml;base64
+func InlineSVGBase64(in []byte) []byte {
+	enc := inlineSVG(in, true)
+	out := make([]byte, 0, len(enc)+40)
+	out = []byte(`url("data:image/svg+xml;base64,")`)
+	out = append(out, enc...)
+	out = append(out, []byte(`")"`)...)
+	return out
+}
+
+// inlinesvg returns a byte slice that is utf8 compliant or base64
+// encoded
+func inlineSVG(in []byte, encode bool) []byte {
+	if encode {
+		enc := make([]byte, base64.StdEncoding.EncodedLen(len(in)))
+		base64.StdEncoding.Encode(enc, in)
+		return enc
+	}
+
+	// Strip unnecessary whitespace and newlines
+	input := bytes.Replace(in, []byte("\r\n"), []byte(""), -1)
+
+	reg := regexp.MustCompile(`>\\s+<`)
+	input = reg.ReplaceAll(input, []byte("><"))
+
+	// URL encode the string before return it
+	u := &url.URL{Path: string(input)}
+	encodedPath := u.String()
+	return []byte(encodedPath)
 }
