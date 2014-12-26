@@ -449,7 +449,7 @@ func InlineSVG(in []byte) []byte {
 func InlineSVGBase64(in []byte) []byte {
 	enc := inlineSVG(in, true)
 	out := make([]byte, 0, len(enc)+40)
-	out = []byte(`url("data:image/svg+xml;base64,")`)
+	out = []byte(`url("data:image/svg+xml;base64,`)
 	out = append(out, enc...)
 	out = append(out, []byte(`")"`)...)
 	return out
