@@ -16,8 +16,10 @@ import (
 	mrand "math/rand"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"sync"
+	"unicode/utf8"
 
 	"image/draw"
 	_ "image/gif"
@@ -427,4 +429,32 @@ func (l *ImageList) Export() (string, error) {
 	}
 	log.Print("Created sprite: ", abs)
 	return abs, nil
+}
+
+// InlineSVG accepts a byte slice and returns a valid utf8 svg+xml bytes.
+// Any invalid utf8 runes are removed, unnecessary newline and whitespace
+// are removed from the input.
+func InlineSVG(in []byte) []byte {
+	//enc := make([]byte, base64.StdEncoding.EncodedLen(len(*in)))
+	//base64.StdEncoding.Encode(enc, *in)
+	runes := bytes.Runes(in)
+	clean := make([]byte, len(runes))
+	pos := 0
+	// Clean for utf8 valid runes, is this necessary?
+	for _, v := range runes {
+		if utf8.ValidRune(v) {
+			pos += utf8.EncodeRune(clean[pos:], v)
+		}
+	}
+
+	reg := regexp.MustCompile(">\\s+<")
+
+	// newlines break svg parsing in the browser
+	new := bytes.Replace(clean, []byte("\r\n"), []byte(""), -1)
+	new = reg.ReplaceAll(new, []byte("><"))
+	out := []byte(`url("data:image/svg+xml;utf8,`)
+	out = append(out, new...)
+	out = append(out, []byte(`")`)...)
+
+	return out
 }
