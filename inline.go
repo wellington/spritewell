@@ -9,7 +9,7 @@ import (
 	_ "image/jpeg"
 	"image/png"
 	"io"
-	"regexp"
+	"net/url"
 	"unicode/utf8"
 )
 
@@ -100,10 +100,13 @@ func inlineSVG(w io.Writer, r io.Reader, encode bool) {
 
 	// // Strip unnecessary whitespace and newlines
 	input := bytes.Replace(buf.Bytes(), []byte("\r\n"), []byte(""), -1)
-	input = bytes.Replace(input, []byte(`"`), []byte("'"), -1)
-	reg := regexp.MustCompile(`>\\s+<`)
-	input = reg.ReplaceAll(input, []byte("><"))
+	// input = bytes.Replace(input, []byte(`"`), []byte("'"), -1)
+	// reg := regexp.MustCompile(`>\\s+<`)
+	// input = reg.ReplaceAll(input, []byte("><"))
 
-	w.Write(input)
+	u := &url.URL{Path: string(input)}
+	encodedPath := []byte(u.String())
+
+	w.Write(encodedPath)
 	w.Write([]byte(`")`))
 }
