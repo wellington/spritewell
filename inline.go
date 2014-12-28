@@ -1,12 +1,17 @@
 package spritewell
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/base64"
 	"image"
+	_ "image/gif"
+	_ "image/jpeg"
+	"image/png"
 	"io"
 	"net/url"
 	"regexp"
+	"unicode/utf8"
 )
 
 func imageType(r io.Reader) (string, error) {
@@ -15,6 +20,52 @@ func imageType(r io.Reader) (string, error) {
 		return "", err
 	}
 	return str, nil
+}
+
+// IsSVG attempts to determine if a reader contains an SVG
+func IsSVG(r io.Reader) bool {
+
+	// Copy first 1k block and look for <svg
+	var buf bytes.Buffer
+	io.CopyN(&buf, r, bytes.MinRead)
+
+	s := bufio.NewScanner(&buf)
+	s.Split(bufio.ScanWords)
+	mat := []byte("<svg")
+	for s.Scan() {
+		if bytes.Equal(mat, s.Bytes()) {
+			return true
+		}
+		// Guesstimate that SVG with non-utf8 is no SVG at all
+		if !utf8.Valid(s.Bytes()) {
+			return false
+		}
+	}
+	return false
+}
+
+// Inline accepts an io.Reader and returns a byte array of
+// base64 encoded binary data or optionally base64 encodes
+// svg data.
+func Inline(r io.Reader, w io.Writer, encode ...bool) error {
+
+	m, ext, err := image.Decode(r)
+	_ = ext
+	if err != nil {
+		return err
+	}
+
+	// Check if SVG
+	var buf bytes.Buffer
+	tr := io.TeeReader(r, &buf)
+	if IsSVG(tr) {
+		mr := io.MultiReader(&buf, r)
+		_ = mr
+		return nil
+	}
+
+	err = png.Encode(w, m)
+	return err
 }
 
 // InlineSVG accepts a byte slice and returns a valid utf8 svg+xml bytes.

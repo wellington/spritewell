@@ -2,10 +2,51 @@ package spritewell
 
 import (
 	"bytes"
+	"io"
 	"io/ioutil"
 	"os"
 	"testing"
 )
+
+func TestIsSVG(t *testing.T) {
+	f, err := os.Open("test/gopher-front.svg")
+	if err != nil {
+		t.Error(err)
+	}
+	b := IsSVG(f)
+	if e := true; e != b {
+		t.Errorf("got: %t wanted: %t", b, e)
+	}
+
+	var buf bytes.Buffer
+	f, err = os.Open("test/pixel.png")
+	if err != nil {
+		t.Error(err)
+	}
+	tr := io.TeeReader(f, &buf)
+	b = IsSVG(tr)
+	if e := false; e != b {
+		t.Errorf("got: %t wanted: %t", b, e)
+	}
+	if e := 172; e != len(buf.Bytes()) {
+		t.Errorf("got: %d wanted: %d", len(buf.Bytes()), e)
+	}
+
+	buf.Reset()
+	f, err = os.Open("test/139.png")
+	if err != nil {
+		t.Error(err)
+	}
+	tr = io.TeeReader(f, &buf)
+	b = IsSVG(tr)
+	if e := false; e != b {
+		t.Errorf("got: %t wanted: %t", b, e)
+	}
+	if bytes.MinRead != len(buf.Bytes()) {
+		t.Errorf("got: %d wanted: %d", len(buf.Bytes()), bytes.MinRead)
+	}
+
+}
 
 func TestImageType(t *testing.T) {
 	f, err := os.Open("test/pixel.png")
