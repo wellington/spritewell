@@ -2,8 +2,8 @@ package spritewell
 
 import (
 	"bytes"
+	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"testing"
 )
@@ -48,41 +48,15 @@ func TestIsSVG(t *testing.T) {
 
 }
 
-func TestImageType(t *testing.T) {
-	f, err := os.Open("test/pixel.png")
-	if err != nil {
-		t.Error(err)
-	}
-	it, err := imageType(f)
-	if err != nil {
-		t.Error(err)
-	}
-	if e := "png"; e != it {
-		t.Errorf("got: %s wanted: %s", it, e)
-	}
-	f.Close()
+func TestInline(t *testing.T) {
 
-	f, err = os.Open("test/pixel.png.svg")
+	f, err := os.Open("test/gopher-front.svg")
 	if err != nil {
 		t.Error(err)
 	}
-	it, err = imageType(f)
-	if err != nil {
-		t.Error(err)
-	}
-	if e := "png"; e != it {
-		t.Errorf("got: %s wanted: %s", it, e)
-	}
-	f.Close()
-
-	f, err = os.Open("test/gopher-front.svg.png")
-	if err != nil {
-		t.Error(err)
-	}
-	it, err = imageType(f)
-	if err == nil {
-		t.Error("no error thrown for svg")
-	}
+	var buf bytes.Buffer
+	Inline(f, &buf, false)
+	fmt.Println(buf.String())
 
 }
 
@@ -105,6 +79,7 @@ func TestSpriteInline(t *testing.T) {
 	}
 }
 
+/*
 func TestXinlineSVG(t *testing.T) {
 	bs, err := ioutil.ReadFile("test/gopher-front.svg")
 	if err != nil {
@@ -124,3 +99,4 @@ func TestXinlineSVG(t *testing.T) {
 		t.Errorf("got:\n%s\nwanted:\n%s\n", string(new), string(e))
 	}
 }
+*/

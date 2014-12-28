@@ -9,18 +9,9 @@ import (
 	_ "image/jpeg"
 	"image/png"
 	"io"
-	"net/url"
 	"regexp"
 	"unicode/utf8"
 )
-
-func imageType(r io.Reader) (string, error) {
-	_, str, err := image.DecodeConfig(r)
-	if err != nil {
-		return "", err
-	}
-	return str, nil
-}
 
 // IsSVG attempts to determine if a reader contains an SVG
 func IsSVG(r io.Reader) bool {
@@ -49,19 +40,19 @@ func IsSVG(r io.Reader) bool {
 // svg data.
 func Inline(r io.Reader, w io.Writer, encode ...bool) error {
 
-	m, ext, err := image.Decode(r)
-	_ = ext
-	if err != nil {
-		return err
-	}
-
 	// Check if SVG
 	var buf bytes.Buffer
 	tr := io.TeeReader(r, &buf)
 	if IsSVG(tr) {
+		enc := len(encode) > 0 && encode[0]
 		mr := io.MultiReader(&buf, r)
-		_ = mr
+		inlineSVG(w, mr, enc)
 		return nil
+	}
+	mr := io.MultiReader(&buf, r)
+	m, _, err := image.Decode(mr)
+	if err != nil {
+		return err
 	}
 
 	err = png.Encode(w, m)
@@ -72,43 +63,47 @@ func Inline(r io.Reader, w io.Writer, encode ...bool) error {
 // Any invalid utf8 runes are removed, unnecessary newline and whitespace
 // are removed from the input.  This encoding is more error prone, but uses
 // less space.
-func InlineSVG(in []byte) []byte {
-	out := []byte(`url("data:image/svg+xml;utf8,`)
-	new := inlineSVG(in, false)
-	out = append(out, new...)
-	out = append(out, []byte(`")`)...)
-
-	return out
+func InlineSVG(r io.Reader, w io.Writer) {
+	w.Write([]byte(`url("data:image/svg+xml;utf8,`))
+	io.Copy(w, r)
+	w.Write([]byte(`")`))
 }
 
 // InlineSVG accepts a byte slice and returns a base64 byte slice
 // compatible with image/svg+xml;base64
 func InlineSVGBase64(in []byte) []byte {
-	enc := inlineSVG(in, true)
+	/*enc := inlineSVG(in, true)
 	out := make([]byte, 0, len(enc)+40)
 	out = []byte(`url("data:image/svg+xml;base64,`)
 	out = append(out, enc...)
 	out = append(out, []byte(`")"`)...)
-	return out
+	return out*/
+	return []byte{}
 }
 
 // inlinesvg returns a byte slice that is utf8 compliant or base64
 // encoded
-func inlineSVG(in []byte, encode bool) []byte {
+func inlineSVG(w io.Writer, r io.Reader, encode bool) {
 	if encode {
-		enc := make([]byte, base64.StdEncoding.EncodedLen(len(in)))
-		base64.StdEncoding.Encode(enc, in)
-		return enc
+		bw := base64.NewEncoder(base64.StdEncoding, w)
+		w.Write([]byte(`url("data:image/svg+xml;base64,`))
+		io.Copy(bw, r)
+		w.Write([]byte(`")`))
+		return
 	}
 
-	// Strip unnecessary whitespace and newlines
-	input := bytes.Replace(in, []byte("\r\n"), []byte(""), -1)
+	w.Write([]byte(`url("data:image/svg+xml;utf8,`))
+	// Exhaust the buffer and do some sloppy regex stuff to the input
+	// TODO: convert this to streaming reader
+	var buf bytes.Buffer
+	buf.ReadFrom(r)
 
+	// // Strip unnecessary whitespace and newlines
+	input := bytes.Replace(buf.Bytes(), []byte("\r\n"), []byte(""), -1)
+	input = bytes.Replace(input, []byte(`"`), []byte("'"), -1)
 	reg := regexp.MustCompile(`>\\s+<`)
 	input = reg.ReplaceAll(input, []byte("><"))
 
-	// URL encode the string before return it
-	u := &url.URL{Path: string(input)}
-	encodedPath := u.String()
-	return []byte(encodedPath)
+	w.Write(input)
+	w.Write([]byte(`")`))
 }
