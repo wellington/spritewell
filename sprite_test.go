@@ -144,7 +144,7 @@ func ExampleSpriteExport() {
 	fmt.Println(of)
 
 	// Output:
-	// img/png.203b63
+	// img/203b63.png
 }
 
 func TestSpriteDecode(t *testing.T) {
