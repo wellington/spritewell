@@ -94,15 +94,4 @@ func TestBinaryInline(t *testing.T) {
 	if e != buf.String() {
 		t.Errorf("got:\n%s\nwanted:\n%s", buf.String(), string(e))
 	}
-	// Bytes are non-deterministic, so check length and move on
-	/*if len(bytes) != 73 {
-		t.Errorf("Pixel blog data had an invalid length"+
-			"\n     was: %d\nexpected: 300-350", len(bytes))
-	}
-
-	str := imgs.Inline()
-	if len(str) != 129 {
-		t.Errorf("CSS length has an invalid length:%d expected: 400-500",
-			len(str))
-	}*/
 }

@@ -1,11 +1,9 @@
 package spritewell
 
 import (
-	"bufio"
 	"bytes"
 	"crypto/md5"
 	"crypto/rand"
-	"encoding/base64"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -120,32 +118,6 @@ func (l ImageList) X(pos int) int {
 func (l ImageList) Y(pos int) int {
 	p := l.GetPack(pos)
 	return p.Y
-}
-
-func (l ImageList) inline() []byte {
-
-	r, w := io.Pipe()
-	go func(w io.WriteCloser) {
-		err := png.Encode(w, l.GoImages[0])
-		if err != nil {
-			panic(err)
-		}
-		w.Close()
-	}(w)
-	var scanned []byte
-	scanner := bufio.NewScanner(r)
-	scanner.Split(bufio.ScanBytes)
-	for scanner.Scan() {
-		scanned = append(scanned, scanner.Bytes()...)
-	}
-	return scanned
-}
-
-// Inline creates base64 encoded string of the underlying
-// image data blog
-func (l ImageList) Inline() string {
-	encstr := base64.StdEncoding.EncodeToString(l.inline())
-	return fmt.Sprintf("url('data:image/png;base64,%s')", encstr)
 }
 
 func (l ImageList) SImageWidth(s string) int {
