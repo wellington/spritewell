@@ -54,8 +54,10 @@ func Inline(r io.Reader, w io.Writer, encode ...bool) error {
 	if err != nil {
 		return err
 	}
-
-	err = png.Encode(w, m)
+	w.Write([]byte(`url("data:image/png;base64,`))
+	bw := base64.NewEncoder(base64.StdEncoding, w)
+	err = png.Encode(bw, m)
+	w.Write([]byte(`")`))
 	return err
 }
 
