@@ -89,10 +89,10 @@ func TestBinaryInline(t *testing.T) {
 	var buf bytes.Buffer
 	Inline(f, &buf)
 
-	e := []byte{137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 13, 73, 72, 68, 82, 0, 0, 0, 1, 0, 0, 0, 1, 8, 6, 0, 0, 0, 31, 21, 196, 137, 0, 0, 0, 16, 73, 68, 65, 84, 120, 156, 98, 98, 0, 2, 64, 0, 0, 0, 255, 255, 0, 15, 0, 3, 144, 107, 32, 19, 0, 0, 0, 0, 73, 69, 78, 68, 174, 66, 96, 130}
+	e := `url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAEElEQVR4nGJiAAJAAAAA//8ADwADkGsgEwAAAABJRU5ErkJg")`
 
-	if !bytes.Equal(e, buf.Bytes()) {
-		t.Errorf("got:\n%s\nwanted:\n%s", string(buf.String()), string(e))
+	if e != buf.String() {
+		t.Errorf("got:\n%s\nwanted:\n%s", buf.String(), string(e))
 	}
 	// Bytes are non-deterministic, so check length and move on
 	/*if len(bytes) != 73 {
