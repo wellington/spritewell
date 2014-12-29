@@ -144,7 +144,7 @@ func ExampleSpriteExport() {
 	fmt.Println(of)
 
 	// Output:
-	// img/b798ab.png
+	// img/png.203b63
 }
 
 func TestSpriteDecode(t *testing.T) {
@@ -299,7 +299,7 @@ func TestOutput(t *testing.T) {
 		t.Error(err)
 	}
 
-	if e := "image/78805a.png"; e != str {
+	if e := "image/f4514c.png"; e != str {
 		t.Errorf("got: %s wanted: %s", str, e)
 	}
 
@@ -310,7 +310,7 @@ func TestOutput(t *testing.T) {
 		t.Error(err)
 	}
 
-	if e := "img/b798ab.png"; e != str {
+	if e := "img/9a465a.png"; e != str {
 		t.Errorf("got: %s wanted: %s", str, e)
 	}
 

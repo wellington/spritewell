@@ -155,8 +155,9 @@ func (l *ImageList) Dimensions() Pos {
 	return l.GetPack(len(l.GoImages))
 }
 
-// Build an output file location based on
-// [genimagedir|location of file matched by glob] + glob pattern
+// OutputPath generates a unique filename based on the relative path
+// from image directory to build directory and the files matched in
+// the glob lookup.  OutputPath is not cache safe.
 func (l *ImageList) OutputPath() (string, error) {
 	path, err := filepath.Rel(l.BuildDir, l.GenImgDir)
 	if err != nil {
@@ -167,7 +168,7 @@ func (l *ImageList) OutputPath() (string, error) {
 	}
 
 	hasher := md5.New()
-	hasher.Write([]byte(path))
+	hasher.Write([]byte(path + strings.Join(l.Globs, "|")))
 	salt := hex.EncodeToString(hasher.Sum(nil))[:6]
 	l.OutFile = filepath.Join(path, salt+".png")
 	return l.OutFile, nil
