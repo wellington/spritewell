@@ -293,13 +293,13 @@ func TestCanDecode(t *testing.T) {
 
 func TestOutput(t *testing.T) {
 	imgs := ImageList{}
-	imgs.Decode("test/*")
+	imgs.Decode("test/*.png")
 	str, err := imgs.OutputPath()
 	if err != nil {
 		t.Error(err)
 	}
 
-	if e := "image/f4514c.png"; e != str {
+	if e := "image/803bf3.png"; e != str {
 		t.Errorf("got: %s wanted: %s", str, e)
 	}
 
@@ -310,7 +310,7 @@ func TestOutput(t *testing.T) {
 		t.Error(err)
 	}
 
-	if e := "img/9a465a.png"; e != str {
+	if e := "img/203b63.png"; e != str {
 		t.Errorf("got: %s wanted: %s", str, e)
 	}
 
