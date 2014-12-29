@@ -315,3 +315,34 @@ func TestOutput(t *testing.T) {
 	}
 
 }
+
+func TestMany(t *testing.T) {
+	imgs := ImageList{}
+	imgs.GenImgDir = "test/build"
+	imgs.Pack = "vert"
+	imgs.Decode("test/many/*.jpg")
+	name, err := imgs.Export()
+	if err != nil {
+		t.Error(err)
+	}
+	_ = name
+
+	m := map[string]Pos{
+		"bird":   Pos{0, 0},
+		"in":     Pos{0, 150},
+		"pencil": Pos{0, 300},
+		"rss":    Pos{0, 450},
+		"twitt":  Pos{0, 600},
+	}
+
+	for k, v := range m {
+		pos := imgs.GetPack(imgs.Lookup(k))
+		if e := v.X; e != pos.X {
+			t.Errorf("got: %d wanted: %d", pos.X, e)
+		}
+		if e := v.Y; e != pos.Y {
+			t.Errorf("got: %d wanted: %d", pos.Y, e)
+		}
+	}
+
+}

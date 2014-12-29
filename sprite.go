@@ -372,7 +372,12 @@ func randString(n int) string {
 func (l *ImageList) Export() (string, error) {
 	// Use the auto generated path if none is specified
 	// TODO: Differentiate relative file path (in css) to this abs one
-	abs := filepath.Join(l.GenImgDir, filepath.Base(l.OutFile))
+	opath, err := l.OutputPath()
+	if err != nil {
+		return "", err
+	}
+	os.MkdirAll(filepath.Dir(opath), 0755)
+	abs := filepath.Join(l.GenImgDir, filepath.Base(opath))
 	fo, err := os.Create(abs)
 	if err != nil {
 		if _, err := os.Stat(abs); err == nil {
