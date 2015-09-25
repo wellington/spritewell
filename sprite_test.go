@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 func cleanUpSprites(sprites map[string]ImageList) {
@@ -52,8 +53,24 @@ func TestSpriteCombine_read(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	go func() {
+		imgs.Decode(glob...)
+		imgs.Combine()
+	}()
+	time.Sleep(1 * time.Millisecond)
+	// imgs.ImageHeight(0)
+	// imgs.ImageWidth(0)
+	// imgs.X(0)
+	// imgs.Y(0)
+	// imgs.Dimensions()
+	// imgs.File(".")
+	// imgs.OutputPath()
+	// imgs.Export()
+	// imgs.Lookup("poop")
+	// imgs.GetPack(0)
+	// _ = imgs.Paths
+	// imgs.Padding = 1
 
-	imgs.ImageHeight(0)
 }
 
 func TestSpriteCombine(t *testing.T) {
@@ -61,7 +78,6 @@ func TestSpriteCombine(t *testing.T) {
 	glob := []string{"test/139.jpg", "test/140.jpg"}
 	imgs.Decode(glob...)
 	_, err := imgs.Combine()
-	<-imgs.combining
 	if err != nil {
 		t.Error(err)
 	}
@@ -148,7 +164,6 @@ func ExampleSpriteExport() {
 	}
 	imgs.Decode("test/*.png")
 	of, err := imgs.Combine()
-	<-imgs.combining
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -253,7 +268,6 @@ func TestSpriteError(t *testing.T) {
 	log.SetOutput(&out)
 	imgs.Decode("test/bad/interlace.png")
 	imgs.Combine()
-	<-imgs.combining
 	out.ReadString('\n')
 	str := out.String()
 	strFirst := strings.Split(str, "\n")[0]

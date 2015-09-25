@@ -34,11 +34,13 @@ type ImageList struct {
 	BuildDir, ImageDir, GenImgDir string
 	Out                           draw.Image
 	OutFile                       string
-	Combined                      bool
-	combining                     chan struct{}
-	Globs, Paths                  []string
-	Padding                       int    // Padding in pixels
-	Pack                          string // default is vertical
+
+	combineMu sync.Mutex
+	Combined  bool
+
+	Globs, Paths []string
+	Padding      int    // Padding in pixels
+	Pack         string // default is vertical
 }
 
 // SafeImageMap provides a thread-safe data structure for
@@ -201,7 +203,6 @@ func (l *ImageList) Decode(rest ...string) error {
 
 	// Invalidate the composite cache
 	l.Out = nil
-	l.combining = make(chan struct{})
 	var (
 		paths []string
 	)
@@ -280,7 +281,8 @@ func (l *ImageList) Combine() (string, error) {
 	var (
 		maxW, maxH int
 	)
-
+	l.combineMu.Lock()
+	defer l.combineMu.Unlock()
 	if l.Combined {
 		return l.OutputPath()
 	}
@@ -311,11 +313,13 @@ func (l *ImageList) Combine() (string, error) {
 	// Set the buf so bytes.Buffer works
 	go func(goimg *image.RGBA) {
 		fmt.Println("encoding", l.Globs)
+		l.combineMu.Lock()
+		defer l.combineMu.Unlock()
 		err := png.Encode(&l.buf, goimg)
 		if err != nil {
 			log.Fatal(err)
 		}
-		close(l.combining)
+		l.Combined = true
 	}(goimg)
 	fmt.Println(l.OutputPath())
 	return l.OutputPath()
@@ -435,8 +439,6 @@ func (l *ImageList) Export() (string, error) {
 	//This call is cached if already run
 	l.Combine()
 	defer fo.Close()
-
-	<-l.combining
 
 	n, err := io.Copy(fo, &l.buf)
 	if n == 0 {
