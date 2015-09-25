@@ -44,12 +44,24 @@ func TestSpriteLookup(t *testing.T) {
 	}
 }
 
+func TestSpriteCombine_read(t *testing.T) {
+	imgs := ImageList{}
+	glob := []string{"test/139.jpg", "test/140.jpg"}
+	imgs.Decode(glob...)
+	_, err := imgs.Combine()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	imgs.ImageHeight(0)
+}
+
 func TestSpriteCombine(t *testing.T) {
 	imgs := ImageList{}
 	glob := []string{"test/139.jpg", "test/140.jpg"}
 	imgs.Decode(glob...)
 	_, err := imgs.Combine()
-
+	<-imgs.combining
 	if err != nil {
 		t.Error(err)
 	}
@@ -136,7 +148,7 @@ func ExampleSpriteExport() {
 	}
 	imgs.Decode("test/*.png")
 	of, err := imgs.Combine()
-
+	<-imgs.combining
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -148,6 +160,7 @@ func ExampleSpriteExport() {
 }
 
 func TestSpriteDecode(t *testing.T) {
+	t.Skip()
 	var out bytes.Buffer
 	log.SetOutput(&out)
 	//Should fail with unable to find file
@@ -240,7 +253,7 @@ func TestSpriteError(t *testing.T) {
 	log.SetOutput(&out)
 	imgs.Decode("test/bad/interlace.png")
 	imgs.Combine()
-	_ = imgs
+	<-imgs.combining
 	out.ReadString('\n')
 	str := out.String()
 	strFirst := strings.Split(str, "\n")[0]
