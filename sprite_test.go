@@ -9,12 +9,12 @@ import (
 	"testing"
 )
 
-func cleanUpSprites(sprites map[string]ImageList) {
+func cleanUpSprites(sprites map[string]Sprite) {
 	if sprites == nil {
 		return
 	}
 	for _, iml := range sprites {
-		err := os.Remove(filepath.Join(iml.GenImgDir, iml.OutFile))
+		err := os.Remove(filepath.Join(iml.GenImgDir, iml.outFile))
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -23,7 +23,7 @@ func cleanUpSprites(sprites map[string]ImageList) {
 
 func TestSpriteLookup(t *testing.T) {
 
-	imgs := ImageList{}
+	imgs := New()
 	imgs.Decode("test/139.jpg", "test/140.jpg")
 	if f := imgs.Lookup("test/139.jpg"); f != 0 {
 		t.Errorf("Invalid file location given found %d, expected %d", f, 0)
@@ -44,14 +44,13 @@ func TestSpriteLookup(t *testing.T) {
 }
 
 func TestSpriteCombine_read(t *testing.T) {
-	imgs := ImageList{}
+	imgs := New()
 	glob := []string{"test/139.jpg", "test/140.jpg"}
 	imgs.Decode(glob...)
-	imgs.Combine()
 
 	go func() {
 		imgs.Decode(glob...)
-		imgs.Combine()
+
 	}()
 	// time.Sleep(1 * time.Millisecond)
 	imgs.ImageHeight(0)
@@ -71,10 +70,9 @@ func TestSpriteCombine_read(t *testing.T) {
 }
 
 func TestSpriteCombine(t *testing.T) {
-	imgs := ImageList{}
+	imgs := New()
 	glob := []string{"test/139.jpg", "test/140.jpg"}
 	imgs.Decode(glob...)
-	imgs.Combine()
 
 	bounds := imgs.Dimensions()
 	if bounds.Y != 279 {
@@ -106,7 +104,7 @@ func TestSpriteCombine(t *testing.T) {
 	}
 
 	//Quick cache check
-	imgs.Combine()
+
 	bounds = imgs.Dimensions()
 	if bounds.Y != 279 || bounds.X != 96 {
 		t.Errorf("Cache invalid")
@@ -131,9 +129,8 @@ func TestSpriteCombine(t *testing.T) {
 
 //Test file globbing
 func TestSpriteGlob(t *testing.T) {
-	imgs := ImageList{
-		ImageDir: "test",
-	}
+	imgs := New()
+	imgs.ImageDir = "test"
 	imgs.Decode("*.png")
 
 	// Test [Un]successful lookups
@@ -152,13 +149,12 @@ func TestSpriteGlob(t *testing.T) {
 
 func ExampleSpriteExport() {
 	// This shouldn't be part of spritewell
-	imgs := ImageList{
-		ImageDir:  ".",
-		BuildDir:  "test/build",
-		GenImgDir: "test/build/img",
-	}
+	imgs := New()
+	imgs.ImageDir = "."
+	imgs.BuildDir = "test/build"
+	imgs.GenImgDir = "test/build/img"
+
 	imgs.Decode("test/*.png")
-	imgs.Combine()
 
 	// fmt.Println(of)
 
@@ -171,7 +167,7 @@ func TestSpriteDecode(t *testing.T) {
 	var out bytes.Buffer
 	log.SetOutput(&out)
 	//Should fail with unable to find file
-	i := ImageList{}
+	i := New()
 	i.Decode("notafile")
 	// _, err := i.Combine()
 	// if e := "png: invalid format: invalid image size: 0x0"; err.Error() != e {
@@ -187,10 +183,9 @@ func TestSpriteDecode(t *testing.T) {
 
 func TestSpriteHorizontal(t *testing.T) {
 
-	imgs := ImageList{}
+	imgs := New()
 	imgs.Pack = "horz"
 	imgs.Decode("test/139.jpg", "test/140.jpg")
-	imgs.Combine()
 
 	bounds := imgs.Dimensions()
 	if e := 140; bounds.Y != e {
@@ -212,7 +207,7 @@ func TestSpriteHorizontal(t *testing.T) {
 
 func TestPadding(t *testing.T) {
 
-	imgs := ImageList{}
+	imgs := New()
 	imgs.Padding = 10
 	imgs.Pack = "horz"
 	imgs.Decode("test/139.jpg", "test/140.jpg")
@@ -256,10 +251,10 @@ func TestPadding(t *testing.T) {
 
 func TestSpriteError(t *testing.T) {
 	var out bytes.Buffer
-	imgs := ImageList{}
+	imgs := New()
 	log.SetOutput(&out)
 	imgs.Decode("test/bad/interlace.png")
-	imgs.Combine()
+
 	out.ReadString('\n')
 	str := out.String()
 	strFirst := strings.Split(str, "\n")[0]
@@ -311,7 +306,7 @@ func TestCanDecode(t *testing.T) {
 }
 
 func TestOutput(t *testing.T) {
-	imgs := ImageList{}
+	imgs := New()
 	imgs.Decode("test/*.png")
 	str, err := imgs.OutputPath()
 	if err != nil {
@@ -336,7 +331,7 @@ func TestOutput(t *testing.T) {
 }
 
 func TestMany(t *testing.T) {
-	imgs := ImageList{}
+	imgs := New()
 	imgs.GenImgDir = "test/build"
 	imgs.Pack = "vert"
 	imgs.Decode("test/many/*.jpg")
