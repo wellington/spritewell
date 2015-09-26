@@ -13,7 +13,6 @@ import (
 	mrand "math/rand"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"sync"
 
@@ -230,9 +229,10 @@ func (l *Sprite) OutputPath() (string, error) {
 		path = "image"
 	}
 
+	// TODO: l.Pack + strconv.Itoa(l.Padding) + "|" + filepath.ToSlash(path+strings.Join(l.globs, "|"))
 	hasher := md5.New()
 	l.globMu.RLock()
-	seed := l.Pack + strconv.Itoa(l.Padding) + "|" + filepath.ToSlash(path+strings.Join(l.globs, "|"))
+	seed := filepath.ToSlash(path + strings.Join(l.globs, "|"))
 	l.globMu.RUnlock()
 	hasher.Write([]byte(seed))
 	salt := hex.EncodeToString(hasher.Sum(nil))[:6]
