@@ -3,23 +3,34 @@ package spritewell
 import (
 	"bytes"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
-func cleanUpSprites(sprites map[string]Sprite) {
-	return
-	// if sprites == nil {
-	// 	return
-	// }
-	// for _, iml := range sprites {
-	// 	err := os.Remove(filepath.Join(iml.GenImgDir, iml.outFile))
-	// 	if err != nil {
-	// 		log.Fatal(err)
-	// 	}
-	// }
+type tmp struct {
+	Build string
+	Image string
+}
+
+// Close removes temporary directories
+func (t tmp) Close() error {
+	err := os.RemoveAll(t.Build)
+	if err != nil {
+		return err
+	}
+	return os.RemoveAll(t.Image)
+}
+
+// returns build and image build directories
+func setupTemp(name string) tmp {
+	tdir, _ := ioutil.TempDir("", "TestSprite_combine")
+	gdir := filepath.Join(tdir, "imgs")
+	os.MkdirAll(gdir, 0700)
+	return tmp{Build: tdir, Image: gdir}
 }
 
 func TestSpriteLookup(t *testing.T) {
@@ -44,7 +55,7 @@ func TestSpriteLookup(t *testing.T) {
 	}
 }
 
-func TestSpriteCombine_read(t *testing.T) {
+func TestSprite_race(t *testing.T) {
 	imgs := New(nil)
 	glob := []string{"test/139.jpg", "test/140.jpg"}
 	imgs.Decode(glob...)
@@ -70,8 +81,13 @@ func TestSpriteCombine_read(t *testing.T) {
 	_ = a
 }
 
-func TestSpriteCombine(t *testing.T) {
-	imgs := New(nil)
+func TestSprite_dimensions(t *testing.T) {
+	tmp := setupTemp("TestSprite_dimensions")
+	imgs := New(&SpriteOptions{
+		BuildDir:  tmp.Build,
+		GenImgDir: tmp.Image,
+	})
+	defer tmp.Close()
 	glob := []string{"test/139.jpg", "test/140.jpg"}
 	imgs.Decode(glob...)
 
@@ -112,19 +128,12 @@ func TestSpriteCombine(t *testing.T) {
 	}
 
 	testFile, errch := imgs.Export()
-
-	defer func() {
-		//Cleanup test files
-		err := os.Remove(testFile)
-
-		if err != nil {
-			panic(err)
-		}
-
-	}()
+	if e := "imgs/1e1dbf.png"; !strings.HasSuffix(testFile, e) {
+		t.Fatalf("got: %s wanted: %s", testFile, e)
+	}
 	err := <-errch
 	if err != nil {
-		panic(err)
+		t.Fatal(err)
 	}
 }
 
@@ -149,7 +158,7 @@ func TestSpriteGlob(t *testing.T) {
 	}
 }
 
-func ExampleSpriteExport() {
+func ExampleSprite() {
 	// This shouldn't be part of spritewell
 	imgs := New(&SpriteOptions{
 		ImageDir:  ".",
@@ -333,9 +342,11 @@ func TestOutput(t *testing.T) {
 
 }
 
-func TestMany(t *testing.T) {
+func TestSprite_many(t *testing.T) {
+	tmp := setupTemp("TestSprite_dimensions")
 	imgs := New(&SpriteOptions{
-		GenImgDir: "test/build",
+		GenImgDir: tmp.Image,
+		BuildDir:  tmp.Build,
 		Pack:      "vert",
 	})
 	imgs.Decode("test/many/*.jpg")

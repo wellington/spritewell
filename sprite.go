@@ -523,9 +523,6 @@ func (s *Sprite) Export() (path string, errch chan error) {
 	// 1 buffer to allow easy returning of errors
 	errch = make(chan error, 1)
 	of, path, err := s.export()
-	if of != nil {
-		defer of.Close()
-	}
 	if err != nil {
 		errch <- err
 		return
@@ -534,19 +531,23 @@ func (s *Sprite) Export() (path string, errch chan error) {
 		errch <- errors.New("output file is nil")
 		return
 	}
+	done := s.chImg
+	go func(done chan result, errch chan error, of *os.File) {
+		// We're good for output file location, listen for combining success
+		result := <-done
+		if result.err != nil {
+			errch <- err
+			return
+		}
+		err = writeToDisk(of, result.buf)
+		if err != nil {
+			errch <- err
+			return
+		}
+		// succeeded in writing sprite
+		errch <- nil
+	}(done, errch, of)
 
-	// We're good for output file location, listen for combining success
-	result := <-s.chImg
-	if result.err != nil {
-		errch <- err
-		return
-	}
-	err = writeToDisk(of, result.buf)
-	if err != nil {
-		errch <- err
-		return
-	}
-	errch <- nil
 	return
 }
 
@@ -554,12 +555,11 @@ var ErrFailedToWrite = errors.New("failed to write sprite to disk")
 
 func writeToDisk(of *os.File, buf *bytes.Buffer) error {
 	n, err := io.Copy(of, buf)
-	if n == 0 {
-		log.Printf("failed to write file")
-		return ErrFailedToWrite
-	}
 	if err != nil {
 		return err
+	}
+	if n == 0 {
+		return fmt.Errorf("failed to write file: %s", of.Name())
 	}
 	log.Print("Created sprite: ", of.Name())
 	return nil
