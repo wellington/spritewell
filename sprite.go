@@ -14,6 +14,7 @@ import (
 	mrand "math/rand"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -242,6 +243,8 @@ func (l *Sprite) OutputPath() (string, error) {
 
 	l.optsMu.RLock()
 	path, err := filepath.Rel(l.opts.BuildDir, l.opts.GenImgDir)
+	pack := l.opts.Pack
+	padding := l.opts.Padding
 	l.optsMu.RUnlock()
 	if err != nil {
 		return "", err
@@ -251,13 +254,12 @@ func (l *Sprite) OutputPath() (string, error) {
 		path = "image"
 	}
 
-	// TODO: l.Pack + strconv.Itoa(l.Padding) + "|" + filepath.ToSlash(path+strings.Join(l.globs, "|"))
 	hasher := md5.New()
 	l.globMu.RLock()
 	if len(l.globs) == 0 {
 		return "", ErrNoImages
 	}
-	seed := filepath.ToSlash(path + strings.Join(l.globs, "|"))
+	seed := pack + strconv.Itoa(padding) + "|" + filepath.ToSlash(path+strings.Join(l.globs, "|"))
 	l.globMu.RUnlock()
 	hasher.Write([]byte(seed))
 	salt := hex.EncodeToString(hasher.Sum(nil))[:6]
