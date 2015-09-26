@@ -327,6 +327,7 @@ func TestOutput(t *testing.T) {
 		GenImgDir: "../build/img",
 		BuildDir:  "../build",
 	})
+	imgs.Decode("test/*.png")
 	str, err = imgs.OutputPath()
 	if err != nil {
 		t.Error(err)
