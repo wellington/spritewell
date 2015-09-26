@@ -56,7 +56,11 @@ func TestSpriteLookup(t *testing.T) {
 }
 
 func TestSprite_race(t *testing.T) {
-	imgs := New(nil)
+	tmp := setupTemp("TestSprite_dimensions")
+	imgs := New(&SpriteOptions{
+		GenImgDir: tmp.Image,
+		BuildDir:  tmp.Build,
+	})
 	glob := []string{"test/139.jpg", "test/140.jpg"}
 	imgs.Decode(glob...)
 
