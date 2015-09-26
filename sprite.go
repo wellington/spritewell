@@ -233,6 +233,10 @@ func (l *Sprite) OutputPath() (string, error) {
 	if err != nil {
 		return "", err
 	}
+	// TODO: remove this
+	if path == "." {
+		path = "image"
+	}
 
 	// TODO: l.Pack + strconv.Itoa(l.Padding) + "|" + filepath.ToSlash(path+strings.Join(l.globs, "|"))
 	hasher := md5.New()

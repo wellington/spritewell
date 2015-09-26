@@ -2,6 +2,7 @@ package spritewell
 
 import (
 	"bytes"
+	"fmt"
 	"log"
 	"os"
 	"path/filepath"
@@ -158,8 +159,8 @@ func ExampleSpriteExport() {
 	})
 
 	imgs.Decode("test/*.png")
-
-	// fmt.Println(of)
+	of, _ := imgs.OutputPath()
+	fmt.Println(of)
 
 	// Output:
 	// img/203b63.png
