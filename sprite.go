@@ -508,7 +508,6 @@ func (l *Sprite) Export() (string, error) {
 		log.Print(err)
 		return "", err
 	}
-	//This call is cached if already run
 	defer fo.Close()
 
 	buf := <-l.chImg
