@@ -34,7 +34,7 @@ type Sprite struct {
 	buf bytes.Buffer
 
 	optsMu sync.RWMutex
-	opts   *SpriteOptions
+	opts   *Options
 
 	goImagesMu sync.RWMutex
 	len        int
@@ -50,28 +50,30 @@ type Sprite struct {
 	globs, paths []string
 
 	// Channels to do work
-	process chan work
-	chImg   chan result
+	queue    chan work
+	combined chan result
+
+	// Done notifies caller that sprite is written to disk
+	done chan error
 }
 
-type SpriteOptions struct {
+type Options struct {
 	BuildDir, ImageDir, GenImgDir string
 	Pack                          string
 	Padding                       int // Padding in pixels
 }
 
-func New(opts *SpriteOptions) *Sprite {
+func New(opts *Options) *Sprite {
 	if opts == nil {
-		opts = &SpriteOptions{}
+		opts = &Options{}
 	}
-	p := make(chan work)
-	bufch := make(chan result, 1)
 	l := &Sprite{
-		process: p,
-		chImg:   bufch,
-		opts:    opts,
+		queue:    make(chan work),
+		combined: make(chan result),
+		opts:     opts,
+		done:     make(chan error),
 	}
-	go l.loopAndCombine(p, bufch)
+	go l.loopAndCombine(l.queue, l.combined)
 	return l
 }
 
@@ -334,7 +336,7 @@ func (l *Sprite) Decode(rest ...string) error {
 	if len(l.paths) == 0 {
 		return ErrNoImages
 	}
-	l.process <- work{pos: l.Dimensions(), imgs: l.GoImages}
+	l.queue <- work{pos: l.Dimensions(), imgs: l.GoImages}
 	return nil
 }
 
@@ -349,10 +351,10 @@ func CanDecode(ext string) bool {
 	return false
 }
 
-func (l *Sprite) loopAndCombine(process chan work, resp chan result) {
+func (l *Sprite) loopAndCombine(queue chan work, resp chan result) {
 	for {
 		select {
-		case work := <-process:
+		case work := <-queue:
 			imgs := work.imgs
 			pos := work.pos
 			maxW, maxH := pos.X, pos.Y
@@ -379,23 +381,6 @@ func (l *Sprite) loopAndCombine(process chan work, resp chan result) {
 		}
 	}
 }
-
-/*
-// Combine all images in the slice into a final output
-// image.
-func (l *Sprite) Combine() chan struct{} {
-	ch := make(chan struct{})
-	l.outFileMu.Lock()
-	l.outFile = ""
-	l.outFileMu.Unlock()
-	if l.Out != nil {
-		close(ch)
-		return ch
-	}
-	l.process <- l.Dimensions()
-
-	return ch
-}*/
 
 // Pos represents the x, y coordinates of an image
 // in the sprite sheet.
@@ -516,39 +501,40 @@ func (l *Sprite) export() (*os.File, string, error) {
 	return fo, abs, err
 }
 
-// Export returns the output path of the combined sprite. It does not
-// block writing the file to disk. The channel returned should be blocked
-// on to ensure file is on disk.
-func (s *Sprite) Export() (path string, errch chan error) {
-	// 1 buffer to allow easy returning of errors
-	errch = make(chan error, 1)
+// Export returns the output path of the combined sprite and flushes
+// the sprite to disk. This method does not block on disk I/O. See Wait
+func (s *Sprite) Export() (path string, err error) {
 	of, path, err := s.export()
 	if err != nil {
-		errch <- err
 		return
 	}
 	if of == nil {
-		errch <- errors.New("output file is nil")
+		err = errors.New("output file is nil")
 		return
 	}
-	done := s.chImg
-	go func(done chan result, errch chan error, of *os.File) {
+
+	go func(combined chan result, done chan error, of *os.File) {
 		// We're good for output file location, listen for combining success
-		result := <-done
+		result := <-combined
 		if result.err != nil {
-			errch <- err
+			done <- err
 			return
 		}
-		err = writeToDisk(of, result.buf)
+		err := writeToDisk(of, result.buf)
 		if err != nil {
-			errch <- err
+			done <- err
 			return
 		}
 		// succeeded in writing sprite
-		errch <- nil
-	}(done, errch, of)
+		done <- nil
+	}(s.combined, s.done, of)
 
 	return
+}
+
+// Wait blocks until sprite is encoded to memory and flushed to disk.
+func (s *Sprite) Wait() error {
+	return <-s.done
 }
 
 var ErrFailedToWrite = errors.New("failed to write sprite to disk")

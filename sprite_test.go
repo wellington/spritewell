@@ -57,7 +57,7 @@ func TestSpriteLookup(t *testing.T) {
 
 func TestSprite_race(t *testing.T) {
 	tmp := setupTemp("TestSprite_dimensions")
-	imgs := New(&SpriteOptions{
+	imgs := New(&Options{
 		GenImgDir: tmp.Image,
 		BuildDir:  tmp.Build,
 	})
@@ -87,7 +87,7 @@ func TestSprite_race(t *testing.T) {
 
 func TestSprite_dimensions(t *testing.T) {
 	tmp := setupTemp("TestSprite_dimensions")
-	imgs := New(&SpriteOptions{
+	imgs := New(&Options{
 		BuildDir:  tmp.Build,
 		GenImgDir: tmp.Image,
 	})
@@ -131,11 +131,14 @@ func TestSprite_dimensions(t *testing.T) {
 		t.Errorf("Cache invalid")
 	}
 
-	testFile, errch := imgs.Export()
+	testFile, err := imgs.Export()
 	if e := "imgs/1e1dbf.png"; !strings.HasSuffix(testFile, e) {
 		t.Fatalf("got: %s wanted: %s", testFile, e)
 	}
-	err := <-errch
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = imgs.Wait()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -143,7 +146,7 @@ func TestSprite_dimensions(t *testing.T) {
 
 //Test file globbing
 func TestSpriteGlob(t *testing.T) {
-	imgs := New(&SpriteOptions{
+	imgs := New(&Options{
 		ImageDir: "test",
 	})
 	imgs.Decode("*.png")
@@ -164,7 +167,7 @@ func TestSpriteGlob(t *testing.T) {
 
 func ExampleSprite() {
 	// This shouldn't be part of spritewell
-	imgs := New(&SpriteOptions{
+	imgs := New(&Options{
 		ImageDir:  ".",
 		BuildDir:  "test/build",
 		GenImgDir: "test/build/img",
@@ -192,11 +195,10 @@ func TestSpriteDecode_fail(t *testing.T) {
 		t.Fatalf("got: %s wanted: %s", err, e)
 	}
 
-	path, errch := i.Export()
+	path, err := i.Export()
 	if len(path) > 0 {
 		t.Errorf("no path should be returned got: %s", path)
 	}
-	err = <-errch
 	if err == nil {
 		t.Fatal("error expected")
 	}
@@ -209,7 +211,7 @@ func TestSpriteDecode_fail(t *testing.T) {
 
 func TestSpriteHorizontal(t *testing.T) {
 
-	imgs := New(&SpriteOptions{
+	imgs := New(&Options{
 		Pack: "horz",
 	})
 	imgs.Decode("test/139.jpg", "test/140.jpg")
@@ -234,7 +236,7 @@ func TestSpriteHorizontal(t *testing.T) {
 
 func TestPadding(t *testing.T) {
 
-	imgs := New(&SpriteOptions{
+	imgs := New(&Options{
 		Padding: 10,
 		Pack:    "horz",
 	})
@@ -330,7 +332,7 @@ func TestOutput(t *testing.T) {
 		t.Errorf("got: %s wanted: %s", str, e)
 	}
 
-	imgs = New(&SpriteOptions{
+	imgs = New(&Options{
 		GenImgDir: "../build/img",
 		BuildDir:  "../build",
 	})
@@ -348,14 +350,13 @@ func TestOutput(t *testing.T) {
 
 func TestSprite_many(t *testing.T) {
 	tmp := setupTemp("TestSprite_dimensions")
-	imgs := New(&SpriteOptions{
+	imgs := New(&Options{
 		GenImgDir: tmp.Image,
 		BuildDir:  tmp.Build,
 		Pack:      "vert",
 	})
 	imgs.Decode("test/many/*.jpg")
-	name, errch := imgs.Export()
-	err := <-errch
+	name, err := imgs.Export()
 	if err != nil {
 		t.Error(err)
 	}
