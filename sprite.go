@@ -29,7 +29,9 @@ type GoImages []image.Image
 type Sprite struct {
 	buf bytes.Buffer
 
-	opts       *SpriteOptions
+	optsMu sync.RWMutex
+	opts   *SpriteOptions
+
 	goImagesMu sync.RWMutex
 	len        int
 	GoImages   GoImages
@@ -229,7 +231,10 @@ func (l *Sprite) OutputPath() (string, error) {
 	if len(l.outFile) > 0 {
 		return l.outFile, nil
 	}
+
+	l.optsMu.RLock()
 	path, err := filepath.Rel(l.opts.BuildDir, l.opts.GenImgDir)
+	l.optsMu.RUnlock()
 	if err != nil {
 		return "", err
 	}
@@ -258,16 +263,19 @@ func (l *Sprite) Decode(rest ...string) error {
 		paths []string
 		rels  []string
 	)
+	l.optsMu.RLock()
 	absImageDir, _ := filepath.Abs(l.opts.ImageDir)
+	relImageDir := l.opts.ImageDir
+	l.optsMu.RUnlock()
 	for _, r := range rest {
-		matches, err := filepath.Glob(filepath.Join(l.opts.ImageDir, r))
+		matches, err := filepath.Glob(filepath.Join(relImageDir, r))
 		if err != nil {
 			panic(err)
 		}
 		if len(matches) == 0 {
 			// No matches found, try appending * and trying again
 			// This supports the case "139" > "139.jpg" "139.png" etc.
-			matches, err = filepath.Glob(filepath.Join(l.opts.ImageDir, r+"*"))
+			matches, err = filepath.Glob(filepath.Join(relImageDir, r+"*"))
 			if err != nil {
 				panic(err)
 			}
@@ -275,7 +283,7 @@ func (l *Sprite) Decode(rest ...string) error {
 		rel := make([]string, len(matches))
 		for i := range rel {
 			// Attempt both relative and absolute to path
-			if p, err := filepath.Rel(l.opts.ImageDir, matches[i]); err == nil {
+			if p, err := filepath.Rel(relImageDir, matches[i]); err == nil {
 				rel[i] = p
 			} else if p, err := filepath.Rel(absImageDir, matches[i]); err == nil {
 				rel[i] = p
@@ -389,10 +397,13 @@ type Pos struct {
 // TODO: Changing l.Pack will update the positions, but
 // the sprite file will need to be regenerated via Decode.
 func (l *Sprite) GetPack(pos int) Pos {
+	l.optsMu.RLock()
+	pack := l.opts.Pack
+	l.optsMu.RUnlock()
 	// Default is vertical
-	if l.opts.Pack == "vert" {
+	if pack == "vert" {
 		return l.PackVertical(pos)
-	} else if l.opts.Pack == "horz" {
+	} else if pack == "horz" {
 		return l.PackHorizontal(pos)
 	}
 	return l.PackVertical(pos)
@@ -405,12 +416,15 @@ func (l *Sprite) PackVertical(pos int) Pos {
 	}
 	var x, y int
 	var rect image.Rectangle
+	l.optsMu.RLock()
+	padding := l.opts.Padding
+	l.optsMu.RUnlock()
 	// there are n-1 paddings in an image list
-	y = l.opts.Padding * (pos)
+	y = padding * (pos)
 	// No padding on the outside of the image
 	numimages := l.Len()
 	if pos == numimages {
-		y -= l.opts.Padding
+		y -= padding
 	}
 	for i := 1; i <= pos; i++ {
 		l.goImagesMu.RLock()
@@ -434,13 +448,16 @@ func (l *Sprite) PackHorizontal(pos int) Pos {
 	}
 	var x, y int
 	var rect image.Rectangle
+	l.optsMu.RLock()
+	padding := l.opts.Padding
+	l.optsMu.RUnlock()
 
 	// there are n-1 paddings in an image list
-	x = l.opts.Padding * pos
+	x = padding * pos
 	// No padding on the outside of the image
 	numimages := l.Len()
 	if pos == numimages {
-		x -= l.opts.Padding
+		x -= padding
 	}
 	for i := 1; i <= pos; i++ {
 		l.goImagesMu.RLock()
@@ -476,7 +493,9 @@ func (l *Sprite) Export() (string, error) {
 		return "", err
 	}
 	os.MkdirAll(filepath.Dir(opath), 0755)
+	l.optsMu.RLock()
 	abs := filepath.Join(l.opts.GenImgDir, filepath.Base(opath))
+	l.optsMu.RUnlock()
 	fo, err := os.Create(abs)
 	if err != nil {
 		if _, err := os.Stat(abs); err == nil {

@@ -234,8 +234,9 @@ func TestPadding(t *testing.T) {
 	if e := 0; imgs.Y(1) != e {
 		t.Errorf("Invalid Y found %d, wanted %d", imgs.Y(1), e)
 	}
-
+	imgs.optsMu.Lock()
 	imgs.opts.Pack = "vert"
+	imgs.optsMu.Unlock()
 	bounds = imgs.Dimensions()
 	if e := 289; bounds.Y != e {
 		t.Errorf("Invalid Height found %d, wanted %d", bounds.Y, e)
