@@ -111,7 +111,7 @@ func TestSpriteCombine(t *testing.T) {
 		t.Errorf("Cache invalid")
 	}
 
-	testFile, err := imgs.Export()
+	testFile, errch := imgs.Export()
 
 	defer func() {
 		//Cleanup test files
@@ -122,7 +122,7 @@ func TestSpriteCombine(t *testing.T) {
 		}
 
 	}()
-
+	err := <-errch
 	if err != nil {
 		panic(err)
 	}
@@ -179,10 +179,11 @@ func TestSpriteDecode_fail(t *testing.T) {
 		t.Fatalf("got: %s wanted: %s", err, e)
 	}
 
-	path, err := i.Export()
+	path, errch := i.Export()
 	if len(path) > 0 {
 		t.Errorf("no path should be returned got: %s", path)
 	}
+	err = <-errch
 	if err == nil {
 		t.Fatal("error expected")
 	}
@@ -338,7 +339,8 @@ func TestMany(t *testing.T) {
 		Pack:      "vert",
 	})
 	imgs.Decode("test/many/*.jpg")
-	name, err := imgs.Export()
+	name, errch := imgs.Export()
+	err := <-errch
 	if err != nil {
 		t.Error(err)
 	}

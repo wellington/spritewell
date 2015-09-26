@@ -495,13 +495,12 @@ func randString(n int) string {
 	return string(bytes)
 }
 
-// Export saves out the Sprite to the specified file
-func (l *Sprite) Export() (string, error) {
+func (l *Sprite) export() (*os.File, string, error) {
 	// Use the auto generated path if none is specified
 	// TODO: Differentiate relative file path (in css) to this abs one
 	opath, err := l.OutputPath()
 	if err != nil {
-		return "", err
+		return nil, "", err
 	}
 	os.MkdirAll(filepath.Dir(opath), 0755)
 	l.optsMu.RLock()
@@ -510,29 +509,58 @@ func (l *Sprite) Export() (string, error) {
 	fo, err := os.Create(abs)
 	if err != nil {
 		if _, err := os.Stat(abs); err == nil {
-			return abs, nil
+			return nil, abs, nil
 		}
-		return "", err
+		return nil, "", err
 	}
-	if err != nil {
-		log.Printf("Failed to create file: %s\n", abs)
-		log.Print(err)
-		return "", err
-	}
-	defer fo.Close()
+	return fo, abs, err
+}
 
-	result := <-l.chImg
-	if result.err != nil {
-		return "", err
-	}
-	n, err := io.Copy(fo, result.buf)
-	if n == 0 {
-		log.Fatalf("no bytes written of: %d", l.buf.Len())
+// Export returns the output path of the combined sprite. It does not
+// block writing the file to disk. The channel returned should be blocked
+// on to ensure file is on disk.
+func (s *Sprite) Export() (path string, errch chan error) {
+	// 1 buffer to allow easy returning of errors
+	errch = make(chan error, 1)
+	of, path, err := s.export()
+	if of != nil {
+		defer of.Close()
 	}
 	if err != nil {
-		log.Printf("Failed to create: %s\n%s", abs, err)
-		return "", err
+		errch <- err
+		return
 	}
-	log.Print("Created sprite: ", abs)
-	return abs, nil
+	if of == nil {
+		errch <- errors.New("output file is nil")
+		return
+	}
+
+	// We're good for output file location, listen for combining success
+	result := <-s.chImg
+	if result.err != nil {
+		errch <- err
+		return
+	}
+	err = writeToDisk(of, result.buf)
+	if err != nil {
+		errch <- err
+		return
+	}
+	errch <- nil
+	return
+}
+
+var ErrFailedToWrite = errors.New("failed to write sprite to disk")
+
+func writeToDisk(of *os.File, buf *bytes.Buffer) error {
+	n, err := io.Copy(of, buf)
+	if n == 0 {
+		log.Printf("failed to write file")
+		return ErrFailedToWrite
+	}
+	if err != nil {
+		return err
+	}
+	log.Print("Created sprite: ", of.Name())
+	return nil
 }
