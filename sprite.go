@@ -5,6 +5,7 @@ import (
 	"crypto/md5"
 	"crypto/rand"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"image"
 	"io"
@@ -21,6 +22,8 @@ import (
 	_ "image/jpeg"
 	"image/png"
 )
+
+var ErrNoImages = errors.New("no images matched for pattern")
 
 var formats = []string{".png", ".gif", ".jpg"}
 
@@ -47,7 +50,7 @@ type Sprite struct {
 
 	// Channels to do work
 	process chan work
-	chImg   chan *bytes.Buffer
+	chImg   chan result
 }
 
 type SpriteOptions struct {
@@ -61,7 +64,7 @@ func New(opts *SpriteOptions) *Sprite {
 		opts = &SpriteOptions{}
 	}
 	p := make(chan work)
-	bufch := make(chan *bytes.Buffer, 1)
+	bufch := make(chan result, 1)
 	l := &Sprite{
 		process: p,
 		chImg:   bufch,
@@ -75,6 +78,11 @@ type work struct {
 	imgs GoImages
 	pos  Pos
 	pack string
+}
+
+type result struct {
+	buf *bytes.Buffer
+	err error
 }
 
 // SafeImageMap provides a thread-safe data structure for
@@ -246,6 +254,9 @@ func (l *Sprite) OutputPath() (string, error) {
 	// TODO: l.Pack + strconv.Itoa(l.Padding) + "|" + filepath.ToSlash(path+strings.Join(l.globs, "|"))
 	hasher := md5.New()
 	l.globMu.RLock()
+	if len(l.globs) == 0 {
+		return "", ErrNoImages
+	}
 	seed := filepath.ToSlash(path + strings.Join(l.globs, "|"))
 	l.globMu.RUnlock()
 	hasher.Write([]byte(seed))
@@ -319,9 +330,7 @@ func (l *Sprite) Decode(rest ...string) error {
 	l.goImagesMu.Unlock()
 
 	if len(l.paths) == 0 {
-		return fmt.Errorf("No images were found for pattern: %v",
-			rest,
-		)
+		return ErrNoImages
 	}
 	l.process <- work{pos: l.Dimensions(), imgs: l.GoImages}
 	return nil
@@ -338,7 +347,7 @@ func CanDecode(ext string) bool {
 	return false
 }
 
-func (l *Sprite) loopAndCombine(process chan work, result chan *bytes.Buffer) {
+func (l *Sprite) loopAndCombine(process chan work, resp chan result) {
 	for {
 		select {
 		case work := <-process:
@@ -364,7 +373,7 @@ func (l *Sprite) loopAndCombine(process chan work, result chan *bytes.Buffer) {
 			if err != nil {
 				log.Fatal(err)
 			}
-			result <- buf
+			resp <- result{buf: buf, err: err}
 		}
 	}
 }
@@ -510,8 +519,11 @@ func (l *Sprite) Export() (string, error) {
 	}
 	defer fo.Close()
 
-	buf := <-l.chImg
-	n, err := io.Copy(fo, buf)
+	result := <-l.chImg
+	if result.err != nil {
+		return "", err
+	}
+	n, err := io.Copy(fo, result.buf)
 	if n == 0 {
 		log.Fatalf("no bytes written of: %d", l.buf.Len())
 	}

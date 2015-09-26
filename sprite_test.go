@@ -166,23 +166,32 @@ func ExampleSpriteExport() {
 	// img/203b63.png
 }
 
-func TestSpriteDecode(t *testing.T) {
-	t.Skip()
+func TestSpriteDecode_fail(t *testing.T) {
 	var out bytes.Buffer
 	log.SetOutput(&out)
 	//Should fail with unable to find file
 	i := New(nil)
-	i.Decode("notafile")
-	// _, err := i.Combine()
-	// if e := "png: invalid format: invalid image size: 0x0"; err.Error() != e {
-	// 	t.Errorf("Unexpected error thrown was: %s expected: %s",
-	// 		e, err)
-	// }
+	err := i.Decode("notafile")
+	if err == nil {
+		t.Fatal("error expected")
+	}
 
-	// if len(i.GoImages) > 0 {
-	// 	t.Errorf("Found a non-existant file")
-	// }
-	// log.SetOutput(os.Stdout)
+	if e := ErrNoImages; err != e {
+		t.Fatalf("got: %s wanted: %s", err, e)
+	}
+
+	path, err := i.Export()
+	if len(path) > 0 {
+		t.Errorf("no path should be returned got: %s", path)
+	}
+	if err == nil {
+		t.Fatal("error expected")
+	}
+
+	if e := ErrNoImages; err != e {
+		t.Fatalf("got: %s wanted: %s", err, e)
+	}
+
 }
 
 func TestSpriteHorizontal(t *testing.T) {
