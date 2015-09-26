@@ -29,10 +29,10 @@ type GoImages []image.Image
 type Sprite struct {
 	buf bytes.Buffer
 
-	goImagesMu                    sync.RWMutex
-	len                           int
-	GoImages                      GoImages
-	BuildDir, ImageDir, GenImgDir string
+	opts       *SpriteOptions
+	goImagesMu sync.RWMutex
+	len        int
+	GoImages   GoImages
 
 	outFileMu sync.Mutex
 	outFile   string
@@ -42,20 +42,28 @@ type Sprite struct {
 
 	globMu       sync.RWMutex
 	globs, paths []string
-	Padding      int    // Padding in pixels
-	Pack         string // default is vertical
 
 	// Channels to do work
 	process chan work
 	chImg   chan *bytes.Buffer
 }
 
-func New() *Sprite {
+type SpriteOptions struct {
+	BuildDir, ImageDir, GenImgDir string
+	Pack                          string
+	Padding                       int // Padding in pixels
+}
+
+func New(opts *SpriteOptions) *Sprite {
+	if opts == nil {
+		opts = &SpriteOptions{}
+	}
 	p := make(chan work)
 	bufch := make(chan *bytes.Buffer, 1)
 	l := &Sprite{
 		process: p,
 		chImg:   bufch,
+		opts:    opts,
 	}
 	go l.loopAndCombine(p, bufch)
 	return l
@@ -221,12 +229,9 @@ func (l *Sprite) OutputPath() (string, error) {
 	if len(l.outFile) > 0 {
 		return l.outFile, nil
 	}
-	path, err := filepath.Rel(l.BuildDir, l.GenImgDir)
+	path, err := filepath.Rel(l.opts.BuildDir, l.opts.GenImgDir)
 	if err != nil {
 		return "", err
-	}
-	if path == "." {
-		path = "image"
 	}
 
 	// TODO: l.Pack + strconv.Itoa(l.Padding) + "|" + filepath.ToSlash(path+strings.Join(l.globs, "|"))
@@ -249,16 +254,16 @@ func (l *Sprite) Decode(rest ...string) error {
 		paths []string
 		rels  []string
 	)
-	absImageDir, _ := filepath.Abs(l.ImageDir)
+	absImageDir, _ := filepath.Abs(l.opts.ImageDir)
 	for _, r := range rest {
-		matches, err := filepath.Glob(filepath.Join(l.ImageDir, r))
+		matches, err := filepath.Glob(filepath.Join(l.opts.ImageDir, r))
 		if err != nil {
 			panic(err)
 		}
 		if len(matches) == 0 {
 			// No matches found, try appending * and trying again
 			// This supports the case "139" > "139.jpg" "139.png" etc.
-			matches, err = filepath.Glob(filepath.Join(l.ImageDir, r+"*"))
+			matches, err = filepath.Glob(filepath.Join(l.opts.ImageDir, r+"*"))
 			if err != nil {
 				panic(err)
 			}
@@ -266,7 +271,7 @@ func (l *Sprite) Decode(rest ...string) error {
 		rel := make([]string, len(matches))
 		for i := range rel {
 			// Attempt both relative and absolute to path
-			if p, err := filepath.Rel(l.ImageDir, matches[i]); err == nil {
+			if p, err := filepath.Rel(l.opts.ImageDir, matches[i]); err == nil {
 				rel[i] = p
 			} else if p, err := filepath.Rel(absImageDir, matches[i]); err == nil {
 				rel[i] = p
@@ -381,9 +386,9 @@ type Pos struct {
 // the sprite file will need to be regenerated via Decode.
 func (l *Sprite) GetPack(pos int) Pos {
 	// Default is vertical
-	if l.Pack == "vert" {
+	if l.opts.Pack == "vert" {
 		return l.PackVertical(pos)
-	} else if l.Pack == "horz" {
+	} else if l.opts.Pack == "horz" {
 		return l.PackHorizontal(pos)
 	}
 	return l.PackVertical(pos)
@@ -397,11 +402,11 @@ func (l *Sprite) PackVertical(pos int) Pos {
 	var x, y int
 	var rect image.Rectangle
 	// there are n-1 paddings in an image list
-	y = l.Padding * (pos)
+	y = l.opts.Padding * (pos)
 	// No padding on the outside of the image
 	numimages := l.Len()
 	if pos == numimages {
-		y -= l.Padding
+		y -= l.opts.Padding
 	}
 	for i := 1; i <= pos; i++ {
 		l.goImagesMu.RLock()
@@ -427,11 +432,11 @@ func (l *Sprite) PackHorizontal(pos int) Pos {
 	var rect image.Rectangle
 
 	// there are n-1 paddings in an image list
-	x = l.Padding * pos
+	x = l.opts.Padding * pos
 	// No padding on the outside of the image
 	numimages := l.Len()
 	if pos == numimages {
-		x -= l.Padding
+		x -= l.opts.Padding
 	}
 	for i := 1; i <= pos; i++ {
 		l.goImagesMu.RLock()
@@ -467,7 +472,7 @@ func (l *Sprite) Export() (string, error) {
 		return "", err
 	}
 	os.MkdirAll(filepath.Dir(opath), 0755)
-	abs := filepath.Join(l.GenImgDir, filepath.Base(opath))
+	abs := filepath.Join(l.opts.GenImgDir, filepath.Base(opath))
 	fo, err := os.Create(abs)
 	if err != nil {
 		if _, err := os.Stat(abs); err == nil {
